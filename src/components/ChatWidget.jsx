@@ -763,16 +763,8 @@ const StorflexAssistant = () => {
 
   return (
     <div 
-      className="flex flex-col h-screen w-full bg-gradient-to-br from-blue-50 to-gray-50"
-      style={{ 
-        minHeight: '100vh', 
-        minHeight: '100dvh',
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0
-      }}
+      className="flex flex-col min-h-screen w-full bg-gradient-to-br from-blue-50 to-gray-50"
+      style={{ height: '100vh', minHeight: '-webkit-fill-available' }}
     >
       {/* Header - Responsive */}
       <div className="bg-blue-600 text-white p-3 sm:p-4 shadow-lg flex-shrink-0">
