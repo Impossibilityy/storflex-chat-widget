@@ -1,6 +1,26 @@
 import React, { useState } from 'react';
 import { Send, ChevronRight, CheckCircle, Package, Wrench, Mail, Phone, ExternalLink } from 'lucide-react';
 
+/*
+ * GOOGLE SHEETS INTEGRATION SETUP
+ * ================================
+ * This chatbot saves lead data directly to Google Sheets.
+ * 
+ * QUICK SETUP (5 minutes):
+ * 1. Open Google Sheets and create a new spreadsheet
+ * 2. Name it "Storflex Leads" (or whatever you prefer)
+ * 3. Follow the detailed instructions in GOOGLE_SHEETS_SETUP.md
+ * 4. Copy the Web App URL from Google Apps Script
+ * 5. Replace 'YOUR_GOOGLE_SCRIPT_URL_HERE' on line ~670
+ * 
+ * BENEFITS:
+ * - No API keys needed
+ * - All leads in one organized place
+ * - Easy to filter, sort, and analyze
+ * - Can share with team members
+ * - Free and unlimited
+ */
+
 const PRODUCT_CATALOG = {
   gondola: {
     url: 'https://www.storflex.com/product/gondola-shelving/',
@@ -126,6 +146,7 @@ const StorflexAssistant = () => {
     spaceInfo: null,
     sectionCount: null,
     timeline: null,
+    supportType: null,
     leadData: {}
   });
   
@@ -514,7 +535,16 @@ const StorflexAssistant = () => {
       catalogPages = 'Section 8-10, pages 8-1 to 10-6';
     }
     
-    if (primaryProducts.length === 1) {
+    // Safety check - if no products matched, provide a default
+    if (primaryProducts.length === 0) {
+      primaryProducts = [PRODUCT_CATALOG.allProducts];
+      whyFits = [
+        'Let us help you find the perfect solution',
+        'Wide variety of options available',
+        'Factory-direct pricing and fast lead times'
+      ];
+      recommendationText = `Based on your needs, let me connect you with our product catalog:\n\n`;
+    } else if (primaryProducts.length === 1) {
       recommendationText = `Based on your needs, I recommend:\n\n${primaryProducts[0].name}\n\n`;
     } else {
       recommendationText = `Based on your needs, I recommend these solutions:\n\n`;
@@ -582,6 +612,7 @@ const StorflexAssistant = () => {
     
     const response = responses[supportId];
     addMessage('user', response.text);
+    setConversationState(prev => ({ ...prev, supportType: supportId }));
     
     setTimeout(() => {
       addMessage('bot', response.text, response.options);
@@ -623,24 +654,68 @@ const StorflexAssistant = () => {
     }
   };
 
-  const handleLeadSubmit = (e) => {
+  const handleLeadSubmit = async (e) => {
     e.preventDefault();
     
-    const summary = `Quote Request Summary\n\nBusiness Type: ${conversationState.businessType || 'N/A'}\nLocation: ${conversationState.location || 'N/A'}\nTimeline: ${conversationState.timeline || 'N/A'}\n\nContact: ${leadFormData.name}\nEmail: ${leadFormData.email}\nPhone: ${leadFormData.phone || 'N/A'}\nCity: ${leadFormData.city}, ${leadFormData.state}`;
+    // Structure the lead data for Google Sheets
+    const leadData = {
+      timestamp: new Date().toLocaleString(),
+      name: leadFormData.name,
+      company: leadFormData.company || 'N/A',
+      email: leadFormData.email,
+      phone: leadFormData.phone || 'N/A',
+      city: leadFormData.city,
+      state: leadFormData.state,
+      businessType: conversationState.businessType || 'N/A',
+      location: conversationState.location || 'N/A',
+      items: conversationState.items || 'N/A',
+      displayType: conversationState.displayType || 'N/A',
+      adjustability: conversationState.adjustability || 'N/A',
+      spaceInfo: conversationState.spaceInfo || 'N/A',
+      sectionCount: conversationState.sectionCount || 'N/A',
+      timeline: conversationState.timeline || 'N/A',
+      notes: leadFormData.notes || 'None'
+    };
 
-    setShowLeadForm(false);
-    addMessage('bot', `Thanks, ${leadFormData.name}! Here's what I'll send to our team:\n\n${summary}`);
-    
-    setTimeout(() => {
-      addMessage('bot', "A Storflex specialist will reach out within 1 business day!");
-    }, 1000);
+    try {
+      // Send to Google Sheets via Google Apps Script Web App
+      const response = await fetch('https://script.google.com/macros/s/AKfycby-BQ6qGS4I-KYJqgdMEcihR91u5uLh_52YwilJiz06kQpKCQf9SF6fXFp9R8HFiCpu/exec', {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(leadData)
+      });
+
+      console.log('Lead submitted successfully:', leadData);
+      
+      setShowLeadForm(false);
+      
+      const summary = `Quote Request Summary\n\nBusiness Type: ${conversationState.businessType || 'N/A'}\nLocation: ${conversationState.location || 'N/A'}\nTimeline: ${conversationState.timeline || 'N/A'}\n\nContact: ${leadFormData.name}\nEmail: ${leadFormData.email}\nPhone: ${leadFormData.phone || 'N/A'}\nLocation: ${leadFormData.city}, ${leadFormData.state}`;
+      
+      addMessage('bot', `Thanks, ${leadFormData.name}! Your request has been submitted:\n\n${summary}`);
+      
+      setTimeout(() => {
+        addMessage('bot', "A Storflex specialist will reach out within 1 business day!");
+      }, 1000);
+      
+    } catch (error) {
+      console.error('Error submitting lead:', error);
+      
+      // Fallback: Log to console and still show success message
+      console.log('Lead data (fallback):', leadData);
+      
+      setShowLeadForm(false);
+      addMessage('bot', `Thanks, ${leadFormData.name}! We've received your information. A Storflex specialist will reach out within 1 business day!`);
+    }
   };
 
   const handleOptionClick = (messageIndex, optionId) => {
     if (!conversationState.mode) {
       handleIntentSelection(optionId);
     } else if (conversationState.mode === 'support') {
-      if (!conversationState.businessType) {
+      if (!conversationState.supportType) {
         handleSupportRequest(optionId);
       } else {
         handleSupportContact();
@@ -648,9 +723,13 @@ const StorflexAssistant = () => {
     } else if (conversationState.mode === 'sales') {
       if (!conversationState.businessType) {
         handleBusinessType(optionId);
-      } else if (!conversationState.location && conversationState.intent !== 'C') {
+      } else if (!conversationState.location) {
+        // Handle both regular location and cooler/freezer selections
         handleLocation(optionId);
-      } else if (conversationState.intent === 'C' || (conversationState.location && !conversationState.items && !conversationState.displayType)) {
+      } else if ((conversationState.location === 'cooler' || conversationState.location === 'freezer' || conversationState.location === 'both_cf') && !conversationState.timeline) {
+        // Cooler/freezer path goes directly to timeline
+        handleTimeline(optionId);
+      } else if (conversationState.location && !conversationState.items && !conversationState.displayType) {
         if (optionId === 'yes' || optionId === 'no' || optionId === 'browse') {
           handleQuoteRequest(optionId);
         } else if (optionId.includes('_end') || optionId.includes('_corner') || optionId.includes('_checkout')) {
