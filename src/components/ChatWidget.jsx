@@ -681,9 +681,8 @@ const StorflexAssistant = () => {
       // Send to Google Sheets via Google Apps Script Web App
       const response = await fetch('https://script.google.com/macros/s/AKfycby-BQ6qGS4I-KYJqgdMEcihR91u5uLh_52YwilJiz06kQpKCQf9SF6fXFp9R8HFiCpu/exec', {
         method: 'POST',
-        mode: 'no-cors',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'text/plain',
         },
         body: JSON.stringify(leadData)
       });
