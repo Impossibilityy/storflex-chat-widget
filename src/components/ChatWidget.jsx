@@ -762,54 +762,57 @@ const StorflexAssistant = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen max-w-4xl mx-auto bg-gradient-to-br from-blue-50 to-gray-50">
-      <div className="bg-blue-600 text-white p-4 shadow-lg">
-        <div className="flex items-center gap-3">
-          <Package className="w-8 h-8" />
-          <div>
-            <h1 className="text-xl font-bold">Storflex Assistant</h1>
-            <p className="text-sm text-blue-100">Product Finder & Quote Generator</p>
+    <div className="flex flex-col h-screen w-full bg-gradient-to-br from-blue-50 to-gray-50">
+      {/* Header - Responsive */}
+      <div className="bg-blue-600 text-white p-3 sm:p-4 shadow-lg flex-shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3 max-w-4xl mx-auto">
+          <Package className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0" />
+          <div className="min-w-0">
+            <h1 className="text-base sm:text-xl font-bold truncate">Storflex Assistant</h1>
+            <p className="text-xs sm:text-sm text-blue-100 truncate">Product Finder & Quote Generator</p>
           </div>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((message, index) => (
-          <div
-            key={index}
-            className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
-          >
+      {/* Messages - Responsive */}
+      <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4">
+        <div className="max-w-4xl mx-auto space-y-3 sm:space-y-4">
+          {messages.map((message, index) => (
             <div
-              className={`max-w-[80%] rounded-2xl p-4 ${
-                message.type === 'user'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white shadow-md border border-gray-200'
-              }`}
+              key={index}
+              className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
             >
-              {message.text && (
-                <div className="whitespace-pre-line">{message.text}</div>
-              )}
+              <div
+                className={`max-w-[85%] sm:max-w-[80%] rounded-2xl p-3 sm:p-4 ${
+                  message.type === 'user'
+                    ? 'bg-blue-600 text-white text-sm sm:text-base'
+                    : 'bg-white shadow-md border border-gray-200 text-sm sm:text-base'
+                }`}
+              >
+                {message.text && (
+                  <div className="whitespace-pre-line leading-relaxed">{message.text}</div>
+                )}
               
               {message.productLinks && (
-                <div className="mt-3 space-y-2">
+                <div className="mt-2 sm:mt-3 space-y-2">
                   {(Array.isArray(message.productLinks) ? message.productLinks : [message.productLinks]).map((product, idx) => (
                     <a
                       key={idx}
                       href={product.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="block bg-blue-50 border-2 border-blue-200 rounded-lg p-4 hover:bg-blue-100 transition-colors group"
+                      className="block bg-blue-50 border-2 border-blue-200 rounded-lg p-3 sm:p-4 hover:bg-blue-100 active:bg-blue-200 transition-colors group"
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <div className="text-sm font-semibold text-blue-800 mb-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm sm:text-base font-semibold text-blue-800 mb-1 break-words">
                             {product.name}
                           </div>
-                          <div className="text-xs text-gray-600">
+                          <div className="text-xs sm:text-sm text-gray-600 break-words">
                             {product.title}
                           </div>
                         </div>
-                        <ExternalLink className="w-5 h-5 text-blue-600 group-hover:text-blue-800 flex-shrink-0 ml-3" />
+                        <ExternalLink className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 group-hover:text-blue-800 flex-shrink-0" />
                       </div>
                     </a>
                   ))}
@@ -817,14 +820,14 @@ const StorflexAssistant = () => {
               )}
               
               {message.options && (
-                <div className="mt-3 space-y-2">
+                <div className="mt-2 sm:mt-3 space-y-2">
                   {message.options.map((option) => (
                     <button
                       key={option.id}
                       onClick={() => handleOptionClick(index, option.id)}
-                      className="w-full text-left px-4 py-3 bg-gray-50 hover:bg-blue-50 border border-gray-300 rounded-lg transition-all flex items-center gap-2 group"
+                      className="w-full text-left px-3 py-2.5 sm:px-4 sm:py-3 bg-gray-50 hover:bg-blue-50 active:bg-blue-100 border border-gray-300 rounded-lg transition-all flex items-center gap-2 group text-sm sm:text-base touch-manipulation"
                     >
-                      <span className="flex-1">{option.label}</span>
+                      <span className="flex-1 break-words">{option.label}</span>
                       <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-blue-600" />
                     </button>
                   ))}
@@ -835,9 +838,9 @@ const StorflexAssistant = () => {
         ))}
         
         {showLeadForm && (
-          <div className="bg-white rounded-2xl shadow-lg border-2 border-blue-200 p-6">
-            <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-              <Mail className="w-5 h-5 text-blue-600" />
+          <div className="bg-white rounded-2xl shadow-lg border-2 border-blue-200 p-4 sm:p-6">
+            <h3 className="text-base sm:text-lg font-bold mb-3 sm:mb-4 flex items-center gap-2">
+              <Mail className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
               Contact Information
             </h3>
             <form onSubmit={handleLeadSubmit} className="space-y-3">
@@ -847,14 +850,14 @@ const StorflexAssistant = () => {
                 required
                 value={leadFormData.name}
                 onChange={(e) => setLeadFormData({...leadFormData, name: e.target.value})}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
               <input
                 type="text"
                 placeholder="Company"
                 value={leadFormData.company}
                 onChange={(e) => setLeadFormData({...leadFormData, company: e.target.value})}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
               <input
                 type="email"
@@ -862,23 +865,23 @@ const StorflexAssistant = () => {
                 required
                 value={leadFormData.email}
                 onChange={(e) => setLeadFormData({...leadFormData, email: e.target.value})}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
               <input
                 type="tel"
                 placeholder="Phone"
                 value={leadFormData.phone}
                 onChange={(e) => setLeadFormData({...leadFormData, phone: e.target.value})}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
-              <div className="flex gap-3">
+              <div className="flex gap-2 sm:gap-3">
                 <input
                   type="text"
                   placeholder="City *"
                   required
                   value={leadFormData.city}
                   onChange={(e) => setLeadFormData({...leadFormData, city: e.target.value})}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="flex-1 px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
                 <input
                   type="text"
@@ -886,47 +889,51 @@ const StorflexAssistant = () => {
                   required
                   value={leadFormData.state}
                   onChange={(e) => setLeadFormData({...leadFormData, state: e.target.value})}
-                  className="w-24 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-20 sm:w-24 px-2 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
               <textarea
                 placeholder="Notes"
                 value={leadFormData.notes}
                 onChange={(e) => setLeadFormData({...leadFormData, notes: e.target.value})}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent h-20"
+                className="w-full px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent h-20 resize-none"
               />
               <button
                 type="submit"
-                className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                className="w-full bg-blue-600 text-white py-2.5 sm:py-3 rounded-lg text-sm sm:text-base font-semibold hover:bg-blue-700 active:bg-blue-800 transition-colors flex items-center justify-center gap-2 touch-manipulation"
               >
-                <CheckCircle className="w-5 h-5" />
+                <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" />
                 Submit Request
               </button>
             </form>
           </div>
         )}
+        </div>
       </div>
 
+      {/* Footer - Responsive */}
       {!showLeadForm && (
-        <div className="border-t border-gray-200 p-4 bg-white">
-          <form onSubmit={handleTextSubmit} className="flex gap-2">
-            <input
-              type="text"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              placeholder="Type a message..."
-              className="flex-1 px-4 py-3 border border-gray-300 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-            <button
-              type="submit"
-              className="bg-blue-600 text-white p-3 rounded-full hover:bg-blue-700 transition-colors"
-            >
-              <Send className="w-5 h-5" />
-            </button>
-          </form>
-          <p className="text-xs text-gray-500 text-center mt-2">
-            Storflex Holdings Inc. | (800) 869-2040 | Corning, NY
-          </p>
+        <div className="border-t border-gray-200 p-3 sm:p-4 bg-white flex-shrink-0">
+          <div className="max-w-4xl mx-auto">
+            <form onSubmit={handleTextSubmit} className="flex gap-2">
+              <input
+                type="text"
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                placeholder="Type a message..."
+                className="flex-1 px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <button
+                type="submit"
+                className="bg-blue-600 text-white p-2.5 sm:p-3 rounded-full hover:bg-blue-700 active:bg-blue-800 transition-colors flex-shrink-0 touch-manipulation"
+              >
+                <Send className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+            </form>
+            <p className="text-xs sm:text-sm text-gray-500 text-center mt-2">
+              Storflex Holdings Inc. | (800) 869-2040 | Corning, NY
+            </p>
+          </div>
         </div>
       )}
     </div>
