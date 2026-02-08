@@ -762,7 +762,18 @@ const StorflexAssistant = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen w-full bg-gradient-to-br from-blue-50 to-gray-50">
+    <div 
+      className="flex flex-col h-screen w-full bg-gradient-to-br from-blue-50 to-gray-50"
+      style={{ 
+        minHeight: '100vh', 
+        minHeight: '100dvh',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0
+      }}
+    >
       {/* Header - Responsive */}
       <div className="bg-blue-600 text-white p-3 sm:p-4 shadow-lg flex-shrink-0">
         <div className="flex items-center gap-2 sm:gap-3 max-w-4xl mx-auto">
@@ -786,7 +797,7 @@ const StorflexAssistant = () => {
                 className={`max-w-[85%] sm:max-w-[80%] rounded-2xl p-3 sm:p-4 ${
                   message.type === 'user'
                     ? 'bg-blue-600 text-white text-sm sm:text-base'
-                    : 'bg-white shadow-md border border-gray-200 text-sm sm:text-base'
+                    : 'bg-white text-gray-900 shadow-md border border-gray-200 text-sm sm:text-base'
                 }`}
               >
                 {message.text && (
@@ -825,10 +836,10 @@ const StorflexAssistant = () => {
                     <button
                       key={option.id}
                       onClick={() => handleOptionClick(index, option.id)}
-                      className="w-full text-left px-3 py-2.5 sm:px-4 sm:py-3 bg-gray-50 hover:bg-blue-50 active:bg-blue-100 border border-gray-300 rounded-lg transition-all flex items-center gap-2 group text-sm sm:text-base touch-manipulation"
+                      className="w-full text-left px-3 py-2.5 sm:px-4 sm:py-3 bg-gray-50 hover:bg-blue-50 active:bg-blue-100 border border-gray-300 rounded-lg transition-all flex items-center gap-2 group text-sm sm:text-base text-gray-900 touch-manipulation"
                     >
                       <span className="flex-1 break-words">{option.label}</span>
-                      <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-blue-600" />
+                      <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-blue-600 flex-shrink-0" />
                     </button>
                   ))}
                 </div>
