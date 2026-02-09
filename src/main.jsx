@@ -1,6 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import StorflexAssistant from './ChatWidget.jsx'
+import StorflexAssistant from './components/ChatWidget.jsx'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
