@@ -753,6 +753,12 @@ const StorflexAssistant = () => {
       base: ['base', 'foot', 'feet', 'bottom', 'shoe', 'leg', 'foundation'],
       panel: ['panel', 'back', 'backing', 'pegboard', 'slatwall', 'wire grid', 'backboard'],
       accessory: ['hook', 'peg', 'divider', 'fence', 'basket', 'bin', 'sign holder', 'price', 'retainer'],
+      cooler: ['cooler', 'freezer', 'walk-in', 'walk in', 'refrigerat', 'cold storage', 'camlock', 'cam lock'],
+      corner: ['corner', 'angle', 'radius', 'turn', 'l-shape', 'box corner'],
+      canopy: ['canopy', 'fascia', 'gondola guard', 'valance', 'header'],
+      pharmacy: ['pharmacy', 'rx', 'prescription', 'pharmacist', 'pharma'],
+      mobile: ['mobile', 'caster', 'wheel', 'rolling', 'portable', 'four-sided', 'four sided'],
+      specialty: ['kickplate', 'kick plate', 'spreader', 'top cap', 'end cap', 'closer'],
       other: []
     };
     
@@ -829,6 +835,98 @@ const StorflexAssistant = () => {
       context.material = 'glass';
     } else if (desc.includes('melamine') || desc.includes('laminate')) {
       context.material = 'melamine';
+    }
+    
+    // PANEL TYPE detection (for back panels)
+    if (desc.includes('pegboard') || desc.includes('peg board') || desc.includes('holes')) {
+      context.panelType = 'pegboard';
+    } else if (desc.includes('slatwall') || desc.includes('slat wall') || desc.includes('grooves') || desc.includes('slots')) {
+      context.panelType = 'slatwall';
+    } else if (desc.includes('wire grid') || desc.includes('wire back') || desc.includes('mesh back')) {
+      context.panelType = 'wiregrid';
+    } else if (desc.includes('solid') || desc.includes('flat') || desc.includes('plain')) {
+      context.panelType = 'solid';
+    }
+    
+    // ACCESSORY TYPE detection
+    if (desc.includes('hook') || desc.includes('peg') || desc.includes('hanger')) {
+      context.accessoryType = 'hook';
+    } else if (desc.includes('divider') || desc.includes('fence') || desc.includes('separator')) {
+      context.accessoryType = 'divider';
+    } else if (desc.includes('basket') || desc.includes('bin') || desc.includes('container')) {
+      context.accessoryType = 'basket';
+    } else if (desc.includes('sign holder') || desc.includes('sign') || desc.includes('label')) {
+      context.accessoryType = 'sign';
+    } else if (desc.includes('price') || desc.includes('tag')) {
+      context.accessoryType = 'price';
+    }
+    
+    // COOLER/FREEZER TYPE detection
+    if (desc.includes('wall panel') || desc.includes('wall section')) {
+      context.coolerType = 'wall_panel';
+    } else if (desc.includes('ceiling panel') || desc.includes('ceiling section') || desc.includes('roof panel')) {
+      context.coolerType = 'ceiling_panel';
+    } else if (desc.includes('floor') || desc.includes('flooring')) {
+      context.coolerType = 'floor';
+    } else if (desc.includes('door') || desc.includes('entry')) {
+      context.coolerType = 'door';
+    } else if (desc.includes('camlock') || desc.includes('cam lock') || desc.includes('fastener')) {
+      context.coolerType = 'camlock';
+    } else if (desc.includes('seal') || desc.includes('gasket') || desc.includes('weatherstrip')) {
+      context.coolerType = 'seal';
+    } else if (desc.includes('ceiling support') || desc.includes('beam') || desc.includes('hanger')) {
+      context.coolerType = 'ceiling_support';
+    }
+    
+    // CORNER TYPE detection
+    if (desc.includes('inside corner') || desc.includes('90 degree') || desc.includes('l-shaped')) {
+      context.cornerType = 'inside';
+    } else if (desc.includes('box corner') || desc.includes('enclosed')) {
+      context.cornerType = 'box';
+    } else if (desc.includes('radius') || desc.includes('curved') || desc.includes('round')) {
+      context.cornerType = 'radius';
+    } else if (desc.includes('half radius')) {
+      context.cornerType = 'half_radius';
+    }
+    
+    // CANOPY TYPE detection
+    if (desc.includes('gondola guard') || desc.includes('guard system')) {
+      context.canopyType = 'guard';
+    } else if (desc.includes('insert') || desc.includes('trim')) {
+      context.canopyType = 'insert';
+    } else if (desc.includes('fascia support') || desc.includes('fascia bracket')) {
+      context.canopyType = 'fascia_support';
+    }
+    
+    // SPECIALTY ITEM detection
+    if (desc.includes('kickplate') || desc.includes('kick plate')) {
+      context.specialtyType = 'kickplate';
+    } else if (desc.includes('top cap')) {
+      context.specialtyType = 'top_cap';
+    } else if (desc.includes('post end cap')) {
+      context.specialtyType = 'post_end_cap';
+    } else if (desc.includes('spreader') || desc.includes('cross bar')) {
+      context.specialtyType = 'spreader';
+    }
+    
+    // BASE TYPE detection
+    if (desc.includes('shoe') || desc.includes('feet') || desc.includes('foot')) {
+      context.baseType = 'shoe';
+    } else if (desc.includes('leveling') || desc.includes('adjustable')) {
+      context.baseType = 'leveling';
+    } else if (desc.includes('t-leg') || desc.includes('t leg') || desc.includes('tleg')) {
+      context.baseType = 'tleg';
+    } else if (desc.includes('mobile') || desc.includes('caster') || desc.includes('wheel') || desc.includes('rolling')) {
+      context.baseType = 'mobile';
+    }
+    
+    // UPRIGHT CONFIGURATION detection
+    if (desc.includes('double sided') || desc.includes('double-sided') || desc.includes('both sides')) {
+      context.uprightConfig = 'double';
+    } else if (desc.includes('single sided') || desc.includes('single-sided') || desc.includes('one side')) {
+      context.uprightConfig = 'single';
+    } else if (desc.includes('welded')) {
+      context.uprightConfig = 'welded';
     }
     
     // DEPTH detection (inches) - look for common patterns
@@ -1032,6 +1130,348 @@ const StorflexAssistant = () => {
       }
       
       provideIdentificationResult(componentName, details, catalogRef, products);
+      
+    } else if (category === 'upright') {
+      let componentName = 'Upright/Standard';
+      let details = '';
+      let catalogRef = '';
+      let products = [];
+      
+      if (context.systemType === 'gondola') {
+        const config = context.uprightConfig === 'double' ? 'Double-Sided' : 
+                      context.uprightConfig === 'single' ? 'Single-Sided' : '';
+        const heightText = context.height ? ` - ${context.height}"` : '';
+        
+        componentName = `Gondola ${config} Upright${heightText}`.trim();
+        details = `Gondola upright${config ? ` (${config.toLowerCase()})` : ''} with slots on 1" centers for adjustable shelf brackets${context.height ? `. Height: ${context.height}"` : ''}. Available heights: 54", 60", 72", 84".`;
+        catalogRef = 'Section 2-3: Gondola Shelving';
+        products = ['gondola'];
+      } else if (context.systemType === 'wall') {
+        const heightText = context.height ? ` - ${context.height}"` : '';
+        componentName = `Wall Standard${heightText}`;
+        details = `Wall-mounted upright standard${context.height ? ` in ${context.height}" height` : ''}. Slots on 1" centers for bracket adjustment. Common heights: 48", 60", 72", 84", 96".`;
+        catalogRef = 'Section 8-10: Wall Unit Components';
+        products = ['wall'];
+      } else if (context.systemType === 'widespan' || context.heavyDuty) {
+        componentName = 'Widespan Uprights';
+        details = 'Heavy-duty upright frames for widespan systems. Available in welded or bolted configurations. Heights typically 72" to 144" for warehouse applications.';
+        catalogRef = 'Section 11: Widespan Shelving';
+        products = ['widespan'];
+      } else if (context.systemType === 'clearspan') {
+        componentName = 'Clearspan Uprights';
+        details = 'Upright frames for clearspan shelving. Available in double-sided (freestanding) or wall-mount configurations.';
+        catalogRef = 'Section 12: Clearspan Shelving';
+        products = ['clearspan'];
+      } else {
+        // Ask for system type
+        setConversationState(prev => ({ 
+          ...prev, 
+          identifyCategory: category,
+          identifyDetails: { originalDescription: '', context }
+        }));
+        startProgressiveClarification(category);
+        return;
+      }
+      
+      provideIdentificationResult(componentName, details, catalogRef, products);
+      
+    } else if (category === 'base') {
+      let componentName = 'Base Component';
+      let details = '';
+      let catalogRef = '';
+      let products = [];
+      
+      if (context.baseType === 'shoe') {
+        componentName = 'Base Shoes/Feet';
+        details = 'Base shoes connect to the bottom of uprights and provide stability. Most include leveling screws for floor adjustment.';
+        catalogRef = 'Section 4: Gondola Unit Parts';
+        products = ['gondola'];
+      } else if (context.baseType === 'mobile') {
+        componentName = 'Mobile Base / Casters';
+        details = 'Mobile base system with heavy-duty casters for movable fixtures. Includes locking wheels for secure positioning.';
+        catalogRef = 'Gondola Accessories - Mobile Bases';
+        products = ['gondola', 'gondolaAccessories'];
+      } else if (context.baseType === 'tleg') {
+        componentName = 'T-Leg Base (Widespan)';
+        details = 'T-leg base supports for widespan heavy-duty shelving. Provides stable foundation for high-capacity systems.';
+        catalogRef = 'Section 11: Widespan Components';
+        products = ['widespan'];
+      } else {
+        componentName = 'Base Components';
+        details = 'Base components include base shoes, end closers, leveling feet, and specialty bases for different fixture types.';
+        catalogRef = 'Section 4: Gondola Unit Parts';
+        products = ['gondola'];
+      }
+      
+      provideIdentificationResult(componentName, details, catalogRef, products);
+      
+    } else if (category === 'panel') {
+      let componentName = 'Back Panel';
+      let details = '';
+      let catalogRef = '';
+      let products = [];
+      
+      if (context.panelType === 'pegboard') {
+        componentName = 'Pegboard Back Panel';
+        details = 'Pegboard panels with evenly-spaced holes for hanging merchandise with hooks and pegs. Standard perforation pattern compatible with all pegboard accessories.';
+        catalogRef = 'Section 3: Back Panel Options';
+        products = ['gondola', 'wall', 'gondolaAccessories'];
+      } else if (context.panelType === 'slatwall') {
+        componentName = 'Slatwall Back Panel';
+        details = 'Slatwall panels with horizontal grooves for maximum merchandising flexibility. Compatible with wide range of slatwall accessories.';
+        catalogRef = 'Section 3: Back Panel Options';
+        products = ['gondola', 'wall', 'gondolaAccessories'];
+      } else if (context.panelType === 'wiregrid') {
+        componentName = 'Wire Grid Back Panel';
+        details = 'Wire grid panels provide open visibility while supporting hanging merchandise. Durable welded wire construction.';
+        catalogRef = 'Section 3: Back Panel Options';
+        products = ['gondola', 'wall', 'gondolaAccessories'];
+      } else if (context.panelType === 'solid') {
+        componentName = 'Solid Back Panel';
+        details = 'Solid panel boards provide clean backdrop for merchandise. Available in various materials and finishes.';
+        catalogRef = 'Section 3: Back Panel Options';
+        products = ['gondola', 'wall'];
+      } else {
+        componentName = 'Back Panels';
+        details = 'Back panels available in pegboard, slatwall, wire grid, and solid options. Each type accommodates different merchandising accessories.';
+        catalogRef = 'Section 3: Back Panel Options';
+        products = ['gondola', 'wall'];
+      }
+      
+      provideIdentificationResult(componentName, details, catalogRef, products);
+      
+    } else if (category === 'accessory') {
+      let componentName = 'Accessory';
+      let details = '';
+      let catalogRef = '';
+      let products = [];
+      
+      if (context.accessoryType === 'hook') {
+        componentName = 'Hooks & Pegs';
+        details = 'Merchandise hooks and pegs for pegboard or slatwall. Available in various lengths, finishes, and configurations (single, double, waterfall).';
+        catalogRef = 'Section 7-8: Merchandising Accessories';
+        products = ['gondolaAccessories'];
+      } else if (context.accessoryType === 'divider') {
+        componentName = 'Shelf Dividers / Fences';
+        details = 'Wire or solid dividers that attach to shelves to separate products and prevent items from falling. Adjustable positioning.';
+        catalogRef = 'Section 7: Shelf Accessories';
+        products = ['gondolaAccessories'];
+      } else if (context.accessoryType === 'basket') {
+        componentName = 'Wire Baskets & Bins';
+        details = 'Wire or plastic baskets for bulk merchandise display. Attach to shelving or pegboard. Various sizes available.';
+        catalogRef = 'Section 8: Merchandising Aids';
+        products = ['gondolaAccessories'];
+      } else if (context.accessoryType === 'sign') {
+        componentName = 'Sign Holders';
+        details = 'Sign holders and label holders for shelf edge pricing and product information. Multiple mounting options.';
+        catalogRef = 'Section 8: Merchandising Aids';
+        products = ['gondolaAccessories'];
+      } else if (context.accessoryType === 'price') {
+        componentName = 'Price Channels / Tag Holders';
+        details = 'Price molding and tag holders that attach to shelf front for pricing labels and product tags.';
+        catalogRef = 'Section 7: Shelf Accessories';
+        products = ['gondolaAccessories'];
+      } else {
+        componentName = 'Merchandising Accessories';
+        details = 'Wide range of accessories including hooks, dividers, baskets, sign holders, and price channels to enhance product display.';
+        catalogRef = 'Sections 7-8: Accessories & Merchandising Aids';
+        products = ['gondolaAccessories'];
+      }
+      
+      provideIdentificationResult(componentName, details, catalogRef, products);
+    }
+    
+    // PHASE 3B CATEGORIES
+    else if (category === 'cooler') {
+      let componentName = 'Walk-In Cooler/Freezer Component';
+      let details = '';
+      let catalogRef = '';
+      let products = [];
+      
+      if (context.coolerType === 'wall_panel') {
+        componentName = 'Walk-In Cooler/Freezer Wall Panel';
+        details = 'Insulated wall panels that lock together with cam-lock system. Standard 4" thickness with foamed-in-place polyurethane insulation. Available in various heights and widths.';
+        catalogRef = 'Section 14: Walk-In Coolers & Freezers';
+        products = ['cooler'];
+      } else if (context.coolerType === 'ceiling_panel') {
+        componentName = 'Walk-In Cooler/Freezer Ceiling Panel';
+        details = 'Insulated ceiling panels with cam-lock connections. Designed to interlock with wall panels for complete seal. Supports require proper spacing for units over 16\'x16\'.';
+        catalogRef = 'Section 14: Walk-In Coolers & Freezers';
+        products = ['cooler'];
+      } else if (context.coolerType === 'floor') {
+        componentName = 'Walk-In Cooler/Freezer Floor';
+        details = 'Insulated floor sections for walk-in units. Essential for freezer applications. Non-slip surface options available.';
+        catalogRef = 'Section 14: Walk-In Coolers & Freezers';
+        products = ['cooler'];
+      } else if (context.coolerType === 'door') {
+        componentName = 'Walk-In Cooler/Freezer Door';
+        details = 'Pre-hung insulated doors with heavy-duty hinges and latch systems. Includes safety release from inside. Various sizes available.';
+        catalogRef = 'Section 14: Walk-In Coolers & Freezers';
+        products = ['cooler'];
+      } else if (context.coolerType === 'camlock') {
+        componentName = 'Cam-Locks (Walk-In Fasteners)';
+        details = 'Cam-lock fasteners that connect panels together. Create tight seal between wall and ceiling panels. Essential for proper assembly.';
+        catalogRef = 'Section 14: Walk-In Coolers & Freezers - Assembly';
+        products = ['cooler'];
+      } else if (context.coolerType === 'seal') {
+        componentName = 'Door Seals/Gaskets';
+        details = 'Replacement seals and gaskets for walk-in doors. Maintain temperature efficiency and prevent air leakage.';
+        catalogRef = 'Section 14: Walk-In Coolers & Freezers - Parts';
+        products = ['cooler'];
+      } else if (context.coolerType === 'ceiling_support') {
+        componentName = 'Ceiling Supports (C-Beam/I-Beam/Hangers)';
+        details = 'Ceiling support beams and hangers for units over 16\'x16\'. C-beam or I-beam rests on wall top. Ceiling hangers suspend from building structure using threaded rods.';
+        catalogRef = 'Section 14: Walk-In Coolers & Freezers - Installation';
+        products = ['cooler'];
+      } else {
+        // General cooler/freezer - needs clarification
+        setConversationState(prev => ({ 
+          ...prev, 
+          identifyCategory: category,
+          identifyDetails: { originalDescription: '', context }
+        }));
+        startProgressiveClarification(category);
+        return;
+      }
+      
+      provideIdentificationResult(componentName, details, catalogRef, products);
+      
+    } else if (category === 'corner') {
+      let componentName = 'Corner Unit';
+      let details = '';
+      let catalogRef = '';
+      let products = [];
+      
+      if (context.cornerType === 'inside') {
+        componentName = 'Inside Corner Shelving (90°)';
+        details = 'Inside corner units designed to utilize 90-degree corner spaces. Maximizes corner merchandising in L-shaped layouts. Integrates with gondola runs.';
+        catalogRef = 'Corner Solutions';
+        products = ['insideCorner'];
+      } else if (context.cornerType === 'box') {
+        componentName = 'Box Corner Shelving';
+        details = 'Enclosed box corner units for corner merchandising. Four-sided display capability. Creates focal point at store corners.';
+        catalogRef = 'Corner Solutions';
+        products = ['boxCorner'];
+      } else if (context.cornerType === 'radius') {
+        componentName = 'Radius Corner (Z-Line)';
+        details = 'Curved radius corner for smooth gondola transitions. Premium appearance with no sharp edges. Part of Z-Line gondola system.';
+        catalogRef = 'Section 3: Gondola Options - Z-Line Radius Corner';
+        products = ['gondola'];
+      } else if (context.cornerType === 'half_radius') {
+        componentName = 'Half Radius Corner (Z-Line)';
+        details = 'Half-radius curved corner for tighter spaces. Provides smooth transition with smaller footprint than full radius.';
+        catalogRef = 'Section 3: Gondola Options - Z-Line Half Radius';
+        products = ['gondola'];
+      } else {
+        setConversationState(prev => ({ 
+          ...prev, 
+          identifyCategory: category,
+          identifyDetails: { originalDescription: '', context }
+        }));
+        startProgressiveClarification(category);
+        return;
+      }
+      
+      provideIdentificationResult(componentName, details, catalogRef, products);
+      
+    } else if (category === 'canopy') {
+      let componentName = 'Canopy System Component';
+      let details = '';
+      let catalogRef = '';
+      let products = [];
+      
+      if (context.canopyType === 'guard') {
+        componentName = 'Gondola Guard System';
+        details = 'Protective canopy system that runs along the top of gondola. Provides professional finished appearance and can support signage. Available with various insert options.';
+        catalogRef = 'Section 3: Gondola Options - Gondola Guard System';
+        products = ['gondola', 'gondolaAccessories'];
+      } else if (context.canopyType === 'insert') {
+        componentName = 'Gondola Guard Insert/Trim';
+        details = 'Decorative inserts for gondola guard system. Options include stainless steel, colored inserts, and custom trim. Enhances visual appeal.';
+        catalogRef = 'Section 3: Gondola Options - Guard Insert Trim';
+        products = ['gondola', 'gondolaAccessories'];
+      } else if (context.canopyType === 'fascia_support') {
+        componentName = 'Fascia Support Bracket (Shelf Mount)';
+        details = 'Bracket that mounts to shelf to support fascia panels and signage. Adjustable height for flexible sign positioning.';
+        catalogRef = 'Section 5: Gondola Accessories - Canopy Brackets';
+        products = ['gondolaAccessories'];
+      } else {
+        setConversationState(prev => ({ 
+          ...prev, 
+          identifyCategory: category,
+          identifyDetails: { originalDescription: '', context }
+        }));
+        startProgressiveClarification(category);
+        return;
+      }
+      
+      provideIdentificationResult(componentName, details, catalogRef, products);
+      
+    } else if (category === 'pharmacy') {
+      componentName = 'Pharmacy Fixtures';
+      details = 'Specialized pharmacy fixtures including Rx bay units for prescription storage, pharmacy counters, and secure displays for controlled substances. Designed specifically for pharmacy environments with compliance in mind.';
+      catalogRef = 'Section 13: RX Pharmacy Displays';
+      products = ['rxPharmacy'];
+      
+      provideIdentificationResult(componentName, details, catalogRef, products);
+      
+    } else if (category === 'mobile') {
+      let componentName = 'Mobile Display';
+      let details = '';
+      let catalogRef = '';
+      let products = [];
+      
+      if (desc.includes('four-sided') || desc.includes('four sided')) {
+        componentName = 'Four-Sided Displayer';
+        details = 'Mobile four-sided display unit with casters. Perfect for impulse merchandise and promotional displays. Can be positioned anywhere in store. Lockable wheels for stability.';
+        catalogRef = 'Four-Sided Displayers';
+        products = ['fourSided'];
+      } else {
+        componentName = 'Mobile Base System';
+        details = 'Mobile base with heavy-duty casters for movable gondola fixtures. Includes locking wheels for secure positioning. Allows flexible store layouts.';
+        catalogRef = 'Gondola Accessories - Mobile Bases';
+        products = ['gondola', 'gondolaAccessories'];
+      }
+      
+      provideIdentificationResult(componentName, details, catalogRef, products);
+      
+    } else if (category === 'specialty') {
+      let componentName = 'Specialty Component';
+      let details = '';
+      let catalogRef = '';
+      let products = [];
+      
+      if (context.specialtyType === 'kickplate') {
+        componentName = 'Kickplate';
+        details = 'Kickplates run along the bottom of gondola sections to protect the base and provide a finished look. Available in various lengths to match section sizes.';
+        catalogRef = 'Section 4: Gondola Unit Parts';
+        products = ['gondola'];
+      } else if (context.specialtyType === 'top_cap') {
+        componentName = 'Top Cap';
+        details = 'Top caps finish the top of gondola uprights. Provides clean appearance and protects upright tops. Snap-on installation.';
+        catalogRef = 'Section 4: Gondola Unit Parts';
+        products = ['gondola'];
+      } else if (context.specialtyType === 'post_end_cap') {
+        componentName = 'Post End Caps';
+        details = 'End caps that finish the ends of gondola posts/uprights. Sold in pairs. Creates professional finished appearance.';
+        catalogRef = 'Section 4: Gondola Unit Parts';
+        products = ['gondola'];
+      } else if (context.specialtyType === 'spreader') {
+        componentName = 'Bottom Spreader';
+        details = 'Bottom spreader bars connect between uprights at the base level to provide structural rigidity and stability.';
+        catalogRef = 'Section 4: Gondola Unit Parts';
+        products = ['gondola'];
+      } else {
+        setConversationState(prev => ({ 
+          ...prev, 
+          identifyCategory: category,
+          identifyDetails: { originalDescription: '', context }
+        }));
+        startProgressiveClarification(category);
+        return;
+      }
+      
+      provideIdentificationResult(componentName, details, catalogRef, products);
     }
   };
   
@@ -1061,13 +1501,116 @@ const StorflexAssistant = () => {
         ]);
         break;
         
-      // Simplified handling for other categories (will expand in later phases)
       case 'upright':
+        addMessage('bot', "I can help identify that upright/post! **What type of shelving system** is it for?", [
+          { id: 'sys_gondola', label: 'Gondola (center aisle)' },
+          { id: 'sys_wall', label: 'Wall unit' },
+          { id: 'sys_widespan', label: 'Widespan (heavy duty)' },
+          { id: 'sys_clearspan', label: 'Clearspan (warehouse)' },
+          { id: 'sys_unsure', label: 'Not sure' }
+        ]);
+        break;
+        
       case 'base':
+        addMessage('bot', "I can help identify that base component! **What type is it?**", [
+          { id: 'base_shoe', label: 'Base shoe/foot' },
+          { id: 'base_closer', label: 'Base end closer' },
+          { id: 'base_spreader', label: 'Bottom spreader' },
+          { id: 'base_kickplate', label: 'Kickplate' },
+          { id: 'base_tleg', label: 'T-leg (widespan)' },
+          { id: 'base_mobile', label: 'Mobile/caster base' },
+          { id: 'base_unsure', label: 'Not sure' }
+        ]);
+        break;
+        
       case 'panel':
+        addMessage('bot', "I can help identify that panel! **What type is it?**", [
+          { id: 'panel_pegboard', label: 'Pegboard (holes)' },
+          { id: 'panel_slatwall', label: 'Slatwall (grooves)' },
+          { id: 'panel_wiregrid', label: 'Wire grid' },
+          { id: 'panel_solid', label: 'Solid/flat panel' },
+          { id: 'panel_end', label: 'End panel' },
+          { id: 'panel_unsure', label: 'Not sure' }
+        ]);
+        break;
+        
       case 'accessory':
+        addMessage('bot', "I can help identify that accessory! **What type is it?**", [
+          { id: 'acc_hook', label: 'Hook or peg' },
+          { id: 'acc_divider', label: 'Divider or fence' },
+          { id: 'acc_basket', label: 'Basket or bin' },
+          { id: 'acc_sign', label: 'Sign holder' },
+          { id: 'acc_price', label: 'Price channel/tag' },
+          { id: 'acc_retainer', label: 'Product retainer' },
+          { id: 'acc_cover', label: 'Shelf cover' },
+          { id: 'acc_other', label: 'Something else' }
+        ]);
+        break;
+        
+      case 'cooler':
+        addMessage('bot', "I can help identify that cooler/freezer component! **What type?**", [
+          { id: 'cooler_wall', label: 'Wall panel' },
+          { id: 'cooler_ceiling', label: 'Ceiling panel' },
+          { id: 'cooler_floor', label: 'Floor section' },
+          { id: 'cooler_door', label: 'Door component' },
+          { id: 'cooler_camlock', label: 'Cam-lock/fastener' },
+          { id: 'cooler_seal', label: 'Seal/gasket' },
+          { id: 'cooler_support', label: 'Ceiling support' },
+          { id: 'cooler_other', label: 'Something else' }
+        ]);
+        break;
+        
+      case 'corner':
+        addMessage('bot', "I can help identify that corner component! **What type?**", [
+          { id: 'corner_inside', label: 'Inside corner (90°)' },
+          { id: 'corner_box', label: 'Box corner (enclosed)' },
+          { id: 'corner_radius', label: 'Radius (curved)' },
+          { id: 'corner_half', label: 'Half radius' },
+          { id: 'corner_unsure', label: 'Not sure' }
+        ]);
+        break;
+        
+      case 'canopy':
+        addMessage('bot', "I can help identify that canopy component! **What is it?**", [
+          { id: 'canopy_guard', label: 'Gondola guard system' },
+          { id: 'canopy_insert', label: 'Guard insert/trim' },
+          { id: 'canopy_bracket', label: 'Canopy bracket' },
+          { id: 'canopy_fascia', label: 'Fascia support' },
+          { id: 'canopy_other', label: 'Something else' }
+        ]);
+        break;
+        
+      case 'pharmacy':
+        provideIdentificationResult(
+          'Pharmacy Fixtures',
+          'Specialized pharmacy fixtures including Rx bay units for prescription storage, pharmacy counters, and secure displays for controlled substances. Designed specifically for pharmacy environments with compliance in mind.',
+          'Section 13: RX Pharmacy Displays',
+          ['rxPharmacy']
+        );
+        break;
+        
+      case 'mobile':
+        addMessage('bot', "I can help identify that mobile component! **What is it?**", [
+          { id: 'mobile_foursided', label: 'Four-sided displayer' },
+          { id: 'mobile_base', label: 'Mobile base (casters for gondola)' },
+          { id: 'mobile_caster', label: 'Individual caster/wheel' },
+          { id: 'mobile_unsure', label: 'Not sure' }
+        ]);
+        break;
+        
+      case 'specialty':
+        addMessage('bot', "I can help identify that component! **What type?**", [
+          { id: 'spec_kickplate', label: 'Kickplate' },
+          { id: 'spec_topcap', label: 'Top cap' },
+          { id: 'spec_postcap', label: 'Post end cap' },
+          { id: 'spec_spreader', label: 'Spreader bar' },
+          { id: 'spec_other', label: 'Something else' }
+        ]);
+        break;
+        
+      // Simplified handling for other categories (future phases)
       case 'other':
-        addMessage('bot', `I can help identify that component! To ensure accuracy, let me connect you with our support team:\n\n📞 **Phone:** (800) 869-2040\n📧 **Email:** customerservice@storflex.com\n\nThey can identify any component from photos or detailed descriptions.`, [
+        addMessage('bot', `To ensure accuracy, let me connect you with our support team:\n\n📞 **Phone:** (800) 869-2040\n📧 **Email:** customerservice@storflex.com\n\nThey can identify any component from photos or detailed descriptions.`, [
           { id: 'contact_support', label: 'Contact support' },
           { id: 'describe_again', label: 'Try describing differently' }
         ]);
@@ -1433,6 +1976,683 @@ const StorflexAssistant = () => {
     }, 300);
   };
   
+  // UPRIGHT PROGRESSIVE CLARIFICATION HANDLERS
+  const handleUprightClarification = (systemType) => {
+    const systemLabels = {
+      sys_gondola: 'Gondola (center aisle)',
+      sys_wall: 'Wall unit',
+      sys_widespan: 'Widespan (heavy duty)',
+      sys_clearspan: 'Clearspan (warehouse)',
+      sys_unsure: 'Not sure'
+    };
+    
+    addMessage('user', systemLabels[systemType]);
+    
+    setConversationState(prev => ({
+      ...prev,
+      identifyDetails: { ...prev.identifyDetails, systemType }
+    }));
+    
+    setTimeout(() => {
+      if (systemType === 'sys_gondola') {
+        addMessage('bot', "Is it **double-sided** (for center aisles) or **single-sided**?", [
+          { id: 'upright_double', label: 'Double-sided' },
+          { id: 'upright_single', label: 'Single-sided' },
+          { id: 'upright_unsure', label: 'Not sure' }
+        ]);
+      } else if (systemType === 'sys_wall') {
+        addMessage('bot', "What **height** approximately?\n\n(Wall standards are typically single-sided)", [
+          { id: 'height_48', label: '48"' },
+          { id: 'height_60', label: '60"' },
+          { id: 'height_72', label: '72"' },
+          { id: 'height_84', label: '84"' },
+          { id: 'height_96', label: '96"' },
+          { id: 'height_unsure', label: 'Not sure' }
+        ]);
+      } else if (systemType === 'sys_widespan') {
+        provideIdentificationResult(
+          'Widespan Uprights',
+          'Heavy-duty upright frames for widespan systems. Available in welded or bolted configurations. Heights typically 72" to 144" for warehouse applications.',
+          'Section 11: Widespan Shelving',
+          ['widespan']
+        );
+      } else if (systemType === 'sys_clearspan') {
+        provideIdentificationResult(
+          'Clearspan Uprights',
+          'Upright frames for clearspan shelving. Available in double-sided (freestanding) or wall-mount configurations.',
+          'Section 12: Clearspan Shelving',
+          ['clearspan']
+        );
+      } else {
+        addMessage('bot', "No problem! Can you provide:\n\n• Approximate height\n• Double-sided or single-sided?\n• Any part numbers or markings\n\nOr I can connect you with support:", [
+          { id: 'describe_again', label: 'Provide more details' },
+          { id: 'contact_support', label: 'Contact support' }
+        ]);
+      }
+    }, 300);
+  };
+  
+  const handleUprightConfig = (config) => {
+    const configLabels = {
+      upright_double: 'Double-sided',
+      upright_single: 'Single-sided',
+      upright_unsure: 'Not sure'
+    };
+    
+    addMessage('user', configLabels[config]);
+    
+    setTimeout(() => {
+      addMessage('bot', "What **height** is the upright?\n\n(Common gondola heights)", [
+        { id: 'height_54', label: '54"' },
+        { id: 'height_60', label: '60"' },
+        { id: 'height_72', label: '72"' },
+        { id: 'height_84', label: '84"' },
+        { id: 'height_unsure', label: 'Not sure' }
+      ]);
+    }, 300);
+  };
+  
+  const handleUprightHeight = (height, systemType) => {
+    const heightLabels = {
+      height_48: '48"',
+      height_54: '54"',
+      height_60: '60"',
+      height_72: '72"',
+      height_84: '84"',
+      height_96: '96"',
+      height_unsure: 'Not sure'
+    };
+    
+    addMessage('user', heightLabels[height]);
+    
+    setTimeout(() => {
+      const uprightConfig = conversationState.identifyDetails?.uprightConfig || '';
+      const config = uprightConfig === 'upright_double' ? 'Double-Sided' : 
+                    uprightConfig === 'upright_single' ? 'Single-Sided' : '';
+      const heightText = height === 'height_unsure' ? '' : ` - ${heightLabels[height]}`;
+      
+      if (systemType === 'sys_wall' || conversationState.identifyDetails?.systemType === 'sys_wall') {
+        provideIdentificationResult(
+          `Wall Standard${heightText}`,
+          `Wall-mounted upright standard${heightText ? ` in ${heightLabels[height]} height` : ''}. Slots on 1" centers for bracket adjustment. Common heights: 48", 60", 72", 84", 96".`,
+          'Section 8-10: Wall Unit Components',
+          ['wall']
+        );
+      } else {
+        provideIdentificationResult(
+          `Gondola ${config} Upright${heightText}`.trim(),
+          `Gondola upright${config ? ` (${config.toLowerCase()})` : ''} with slots on 1" centers for adjustable shelf brackets${heightText ? `. Height: ${heightLabels[height]}` : ''}. Available heights: 54", 60", 72", 84".`,
+          'Section 2-3: Gondola Shelving',
+          ['gondola']
+        );
+      }
+    }, 300);
+  };
+  
+  // BASE PROGRESSIVE CLARIFICATION HANDLERS
+  const handleBaseClarification = (baseType) => {
+    const baseLabels = {
+      base_shoe: 'Base shoe/foot',
+      base_closer: 'Base end closer',
+      base_spreader: 'Bottom spreader',
+      base_kickplate: 'Kickplate',
+      base_tleg: 'T-leg (widespan)',
+      base_mobile: 'Mobile/caster base',
+      base_unsure: 'Not sure'
+    };
+    
+    addMessage('user', baseLabels[baseType]);
+    
+    setTimeout(() => {
+      if (baseType === 'base_shoe') {
+        provideIdentificationResult(
+          'Base Shoes/Feet',
+          'Base shoes connect to the bottom of uprights and provide stability. Most include leveling screws for floor adjustment. Available for gondola, wall, and specialty fixtures.',
+          'Section 4: Gondola Unit Parts',
+          ['gondola']
+        );
+      } else if (baseType === 'base_closer') {
+        provideIdentificationResult(
+          'Base End Closers',
+          'Base end closers cap off the ends of gondola base sections. Sold in pairs, they provide a finished look and structural support.',
+          'Section 4: Gondola Unit Parts',
+          ['gondola']
+        );
+      } else if (baseType === 'base_spreader') {
+        provideIdentificationResult(
+          'Bottom Spreader',
+          'Bottom spreader bars connect between uprights at the base level to provide structural rigidity and stability.',
+          'Section 4: Gondola Unit Parts',
+          ['gondola']
+        );
+      } else if (baseType === 'base_kickplate') {
+        provideIdentificationResult(
+          'Kickplate',
+          'Kickplates run along the bottom of gondola sections to protect the base and provide a finished look. Available in various lengths to match section sizes.',
+          'Section 4: Gondola Unit Parts',
+          ['gondola']
+        );
+      } else if (baseType === 'base_tleg') {
+        provideIdentificationResult(
+          'T-Leg Base (Widespan)',
+          'T-leg base supports for widespan heavy-duty shelving. Provides stable foundation for high-capacity systems supporting up to 2,000 lbs per level.',
+          'Section 11: Widespan Components',
+          ['widespan']
+        );
+      } else if (baseType === 'base_mobile') {
+        provideIdentificationResult(
+          'Mobile Base / Casters',
+          'Mobile base system with heavy-duty casters for movable fixtures. Includes locking wheels for secure positioning. Available for gondola and specialty displays.',
+          'Gondola Accessories - Mobile Bases',
+          ['gondola', 'gondolaAccessories']
+        );
+      } else {
+        addMessage('bot', "No problem! Can you describe:\n\n• Where it's located (bottom of upright, end of base, etc.)\n• Does it have wheels or leveling screws?\n• Any part numbers or markings\n\nOr I can connect you with support:", [
+          { id: 'describe_again', label: 'Provide more details' },
+          { id: 'contact_support', label: 'Contact support' }
+        ]);
+      }
+    }, 300);
+  };
+  
+  // PANEL PROGRESSIVE CLARIFICATION HANDLERS
+  const handlePanelClarification = (panelType) => {
+    const panelLabels = {
+      panel_pegboard: 'Pegboard (holes)',
+      panel_slatwall: 'Slatwall (grooves)',
+      panel_wiregrid: 'Wire grid',
+      panel_solid: 'Solid/flat panel',
+      panel_end: 'End panel',
+      panel_unsure: 'Not sure'
+    };
+    
+    addMessage('user', panelLabels[panelType]);
+    
+    setTimeout(() => {
+      if (panelType === 'panel_pegboard') {
+        provideIdentificationResult(
+          'Pegboard Back Panel',
+          'Pegboard panels with evenly-spaced holes (typically 1" on center) for hanging merchandise with hooks and pegs. Standard perforation pattern compatible with all pegboard accessories. Available for gondola and wall units.',
+          'Section 3: Back Panel Options',
+          ['gondola', 'wall', 'gondolaAccessories']
+        );
+      } else if (panelType === 'panel_slatwall') {
+        provideIdentificationResult(
+          'Slatwall Back Panel',
+          'Slatwall panels with horizontal grooves for maximum merchandising flexibility. Compatible with wide range of slatwall accessories including hooks, shelves, and baskets.',
+          'Section 3: Back Panel Options',
+          ['gondola', 'wall', 'gondolaAccessories']
+        );
+      } else if (panelType === 'panel_wiregrid') {
+        provideIdentificationResult(
+          'Wire Grid Back Panel',
+          'Wire grid panels provide open visibility while supporting hanging merchandise. Durable welded wire construction. Ideal for cooler applications and areas requiring airflow.',
+          'Section 3: Back Panel Options',
+          ['gondola', 'wall', 'gondolaAccessories']
+        );
+      } else if (panelType === 'panel_solid') {
+        provideIdentificationResult(
+          'Solid Back Panel',
+          'Solid panel boards provide clean backdrop for merchandise. Available in various materials (particle board, melamine) and finishes. Creates professional appearance.',
+          'Section 3: Back Panel Options',
+          ['gondola', 'wall']
+        );
+      } else if (panelType === 'panel_end') {
+        addMessage('bot', "What **style** of end panel?", [
+          { id: 'endpanel_flush', label: 'Flush (flat)' },
+          { id: 'endpanel_contoured', label: 'Contoured/curved' },
+          { id: 'endpanel_wiregrid', label: 'Wire grid' },
+          { id: 'endpanel_unsure', label: 'Not sure' }
+        ]);
+      } else {
+        addMessage('bot', "No problem! Can you describe:\n\n• Does it have holes, grooves, or is it flat?\n• Is it for the back or the end of a unit?\n• Approximate size\n\nOr I can connect you with support:", [
+          { id: 'describe_again', label: 'Provide more details' },
+          { id: 'contact_support', label: 'Contact support' }
+        ]);
+      }
+    }, 300);
+  };
+  
+  const handleEndPanelStyle = (style) => {
+    const styleLabels = {
+      endpanel_flush: 'Flush (flat)',
+      endpanel_contoured: 'Contoured/curved',
+      endpanel_wiregrid: 'Wire grid',
+      endpanel_unsure: 'Not sure'
+    };
+    
+    addMessage('user', styleLabels[style]);
+    
+    setTimeout(() => {
+      if (style === 'endpanel_flush') {
+        provideIdentificationResult(
+          'Flush End Panel',
+          'Flat end panel that sits flush with the gondola end. Provides clean, finished appearance at aisle ends. Available in various heights.',
+          'Section 5: Gondola Accessories',
+          ['gondola', 'gondolaAccessories']
+        );
+      } else if (style === 'endpanel_contoured') {
+        provideIdentificationResult(
+          'Contoured End Panel',
+          'Curved or contoured end panel for decorative finish. Creates eye-catching display at gondola ends. Premium appearance for specialty retail.',
+          'Section 5: Gondola Accessories',
+          ['gondola', 'gondolaAccessories']
+        );
+      } else if (style === 'endpanel_wiregrid') {
+        provideIdentificationResult(
+          'Wire Grid End Panel',
+          'Wire grid end panel allows merchandising at gondola ends. Compatible with wire grid accessories for flexible product display.',
+          'Section 5: Gondola Accessories',
+          ['gondola', 'gondolaAccessories']
+        );
+      } else {
+        provideIdentificationResult(
+          'End Panels',
+          'End panels finish the sides of gondola units. Available in flush, contoured, and wire grid styles. Various heights to match gondola uprights.',
+          'Section 5: Gondola Accessories',
+          ['gondola', 'gondolaAccessories']
+        );
+      }
+    }, 300);
+  };
+  
+  // ACCESSORY PROGRESSIVE CLARIFICATION HANDLERS
+  const handleAccessoryClarification = (accType) => {
+    const accLabels = {
+      acc_hook: 'Hook or peg',
+      acc_divider: 'Divider or fence',
+      acc_basket: 'Basket or bin',
+      acc_sign: 'Sign holder',
+      acc_price: 'Price channel/tag',
+      acc_retainer: 'Product retainer',
+      acc_cover: 'Shelf cover',
+      acc_other: 'Something else'
+    };
+    
+    addMessage('user', accLabels[accType]);
+    
+    setTimeout(() => {
+      if (accType === 'acc_hook') {
+        addMessage('bot', "What is the hook for?", [
+          { id: 'hook_pegboard', label: 'Pegboard' },
+          { id: 'hook_slatwall', label: 'Slatwall' },
+          { id: 'hook_wire', label: 'Wire grid' },
+          { id: 'hook_shelf', label: 'Shelf front' },
+          { id: 'hook_unsure', label: 'Not sure' }
+        ]);
+      } else if (accType === 'acc_divider') {
+        provideIdentificationResult(
+          'Shelf Dividers / Fences',
+          'Wire or solid dividers that attach to shelves to separate products and prevent items from falling. Adjustable positioning. Available in various heights (4", 6", 8", 10").',
+          'Section 7: Shelf Accessories',
+          ['gondolaAccessories']
+        );
+      } else if (accType === 'acc_basket') {
+        provideIdentificationResult(
+          'Wire Baskets & Bins',
+          'Wire or plastic baskets for bulk merchandise display. Attach to shelving, pegboard, or slatwall. Various sizes available (small, medium, large, extra-large).',
+          'Section 8: Merchandising Aids',
+          ['gondolaAccessories']
+        );
+      } else if (accType === 'acc_sign') {
+        provideIdentificationResult(
+          'Sign Holders',
+          'Sign holders and label holders for shelf edge pricing and product information. Multiple mounting options including clip-on, adhesive, and magnetic.',
+          'Section 8: Merchandising Aids',
+          ['gondolaAccessories']
+        );
+      } else if (accType === 'acc_price') {
+        provideIdentificationResult(
+          'Price Channels / Tag Holders',
+          'Price molding and tag holders that attach to shelf front for pricing labels and product tags. Standard sizes fit most pricing systems.',
+          'Section 7: Shelf Accessories',
+          ['gondolaAccessories']
+        );
+      } else if (accType === 'acc_retainer') {
+        provideIdentificationResult(
+          'Product Retainers',
+          'Metal or plastic retainers that attach to shelf edge to prevent products from falling forward. Especially useful for shelves with small or unstable items.',
+          'Section 7: Shelf Accessories',
+          ['gondolaAccessories']
+        );
+      } else if (accType === 'acc_cover') {
+        provideIdentificationResult(
+          'Shelf Covers',
+          'Stainless steel or plastic shelf covers that protect and enhance shelf appearance. Popular in food service and specialty retail applications.',
+          'Section 7: Shelf Accessories',
+          ['gondolaAccessories']
+        );
+      } else {
+        addMessage('bot', "No problem! Can you describe:\n\n• What it does or where it attaches\n• Approximate size\n• Material (wire, plastic, metal)\n\nOr I can connect you with support:", [
+          { id: 'describe_again', label: 'Provide more details' },
+          { id: 'contact_support', label: 'Contact support' }
+        ]);
+      }
+    }, 300);
+  };
+  
+  const handleHookType = (hookType) => {
+    const hookLabels = {
+      hook_pegboard: 'Pegboard',
+      hook_slatwall: 'Slatwall',
+      hook_wire: 'Wire grid',
+      hook_shelf: 'Shelf front',
+      hook_unsure: 'Not sure'
+    };
+    
+    addMessage('user', hookLabels[hookType]);
+    
+    setTimeout(() => {
+      if (hookType === 'hook_pegboard') {
+        provideIdentificationResult(
+          'Pegboard Hooks',
+          'Hooks designed for pegboard with standard 1" spacing. Available in various styles: single, double, waterfall, scanner, and specialty hooks. Lengths from 2" to 12".',
+          'Section 8: Merchandising Aids',
+          ['gondolaAccessories']
+        );
+      } else if (hookType === 'hook_slatwall') {
+        provideIdentificationResult(
+          'Slatwall Hooks',
+          'Hooks that insert into slatwall grooves. Available in single, double, and waterfall configurations. Compatible with standard slatwall panel systems.',
+          'Section 8: Merchandising Aids',
+          ['gondolaAccessories']
+        );
+      } else if (hookType === 'hook_wire') {
+        provideIdentificationResult(
+          'Wire Grid Hooks',
+          'Hooks designed to attach to wire grid panels. Clip-on design for easy repositioning. Various lengths and styles for different merchandise.',
+          'Section 8: Merchandising Aids',
+          ['gondolaAccessories']
+        );
+      } else if (hookType === 'hook_shelf') {
+        provideIdentificationResult(
+          'Shelf Front Hooks',
+          'Hooks that clip onto the front edge of shelves. Ideal for hanging bags, small items, or impulse merchandise. No tools required for installation.',
+          'Section 7: Shelf Accessories',
+          ['gondolaAccessories']
+        );
+      } else {
+        provideIdentificationResult(
+          'Hooks & Pegs',
+          'Merchandise hooks and pegs for pegboard, slatwall, or wire grid. Available in various lengths, finishes, and configurations (single, double, waterfall).',
+          'Section 8: Merchandising Aids',
+          ['gondolaAccessories']
+        );
+      }
+    }, 300);
+  };
+  
+  // COOLER/FREEZER PROGRESSIVE CLARIFICATION HANDLERS
+  const handleCoolerClarification = (coolerType) => {
+    const coolerLabels = {
+      cooler_wall: 'Wall panel',
+      cooler_ceiling: 'Ceiling panel',
+      cooler_floor: 'Floor section',
+      cooler_door: 'Door component',
+      cooler_camlock: 'Cam-lock/fastener',
+      cooler_seal: 'Seal/gasket',
+      cooler_support: 'Ceiling support',
+      cooler_other: 'Something else'
+    };
+    
+    addMessage('user', coolerLabels[coolerType]);
+    
+    setTimeout(() => {
+      if (coolerType === 'cooler_wall') {
+        provideIdentificationResult(
+          'Walk-In Cooler/Freezer Wall Panel',
+          'Insulated wall panels that lock together with cam-lock system. Standard 4" thickness with foamed-in-place polyurethane insulation. Available in various heights and widths.',
+          'Section 14: Walk-In Coolers & Freezers',
+          ['cooler']
+        );
+      } else if (coolerType === 'cooler_ceiling') {
+        provideIdentificationResult(
+          'Walk-In Cooler/Freezer Ceiling Panel',
+          'Insulated ceiling panels with cam-lock connections. Designed to interlock with wall panels for complete seal. Coolers/freezers over 16\'x16\' require ceiling supports (C-beam, I-beam, or hangers).',
+          'Section 14: Walk-In Coolers & Freezers',
+          ['cooler']
+        );
+      } else if (coolerType === 'cooler_floor') {
+        provideIdentificationResult(
+          'Walk-In Cooler/Freezer Floor',
+          'Insulated floor sections for walk-in units. Essential for freezer applications to prevent ground freeze. Non-slip surface options available.',
+          'Section 14: Walk-In Coolers & Freezers',
+          ['cooler']
+        );
+      } else if (coolerType === 'cooler_door') {
+        provideIdentificationResult(
+          'Walk-In Cooler/Freezer Door',
+          'Pre-hung insulated doors with heavy-duty hinges and latch systems. Includes safety release mechanism from inside for safety compliance. Various sizes available.',
+          'Section 14: Walk-In Coolers & Freezers',
+          ['cooler']
+        );
+      } else if (coolerType === 'cooler_camlock') {
+        provideIdentificationResult(
+          'Cam-Locks (Walk-In Fasteners)',
+          'Cam-lock fasteners that connect panels together. Create tight seal between wall and ceiling panels. Essential hardware for proper walk-in assembly. Check all cam-locks after installation.',
+          'Section 14: Walk-In Coolers & Freezers - Assembly Hardware',
+          ['cooler']
+        );
+      } else if (coolerType === 'cooler_seal') {
+        provideIdentificationResult(
+          'Door Seals/Gaskets',
+          'Replacement seals and gaskets for walk-in doors. Maintain temperature efficiency and prevent air leakage. Regular inspection and replacement recommended.',
+          'Section 14: Walk-In Coolers & Freezers - Replacement Parts',
+          ['cooler']
+        );
+      } else if (coolerType === 'cooler_support') {
+        provideIdentificationResult(
+          'Ceiling Supports (C-Beam/I-Beam/Hangers)',
+          'Ceiling support systems for units over 16\'x16\'. Options: C-beam or I-beam (rests on wall tops) or ceiling hangers (suspend from building structure). Includes bearing angles, brackets, and hardware.',
+          'Section 14: Walk-In Coolers & Freezers - Ceiling Supports',
+          ['cooler']
+        );
+      } else {
+        addMessage('bot', "No problem! Can you describe:\n\n• Where it's located on the walk-in\n• Approximate size or any part numbers\n• Is it metal, plastic, or insulated panel\n\nOr I can connect you with our walk-in specialist:", [
+          { id: 'describe_again', label: 'Provide more details' },
+          { id: 'contact_support', label: 'Contact specialist' }
+        ]);
+      }
+    }, 300);
+  };
+  
+  // CORNER PROGRESSIVE CLARIFICATION HANDLERS
+  const handleCornerClarification = (cornerType) => {
+    const cornerLabels = {
+      corner_inside: 'Inside corner (90°)',
+      corner_box: 'Box corner (enclosed)',
+      corner_radius: 'Radius (curved)',
+      corner_half: 'Half radius',
+      corner_unsure: 'Not sure'
+    };
+    
+    addMessage('user', cornerLabels[cornerType]);
+    
+    setTimeout(() => {
+      if (cornerType === 'corner_inside') {
+        provideIdentificationResult(
+          'Inside Corner Shelving (90°)',
+          'Inside corner units designed to utilize 90-degree corner spaces effectively. Maximizes corner merchandising in L-shaped store layouts. Integrates seamlessly with standard gondola runs.',
+          'Corner Solutions',
+          ['insideCorner']
+        );
+      } else if (cornerType === 'corner_box') {
+        provideIdentificationResult(
+          'Box Corner Shelving',
+          'Enclosed box corner units for corner merchandising. Provides four-sided display capability. Creates focal merchandising point at store corners.',
+          'Corner Solutions',
+          ['boxCorner']
+        );
+      } else if (cornerType === 'corner_radius') {
+        provideIdentificationResult(
+          'Radius Corner (Z-Line)',
+          'Curved radius corner for smooth gondola transitions. Premium appearance with no sharp edges. Part of Z-Line gondola system. Creates flowing store layout.',
+          'Section 3: Gondola Options - Z-Line Radius Corner',
+          ['gondola']
+        );
+      } else if (cornerType === 'corner_half') {
+        provideIdentificationResult(
+          'Half Radius Corner (Z-Line)',
+          'Half-radius curved corner for tighter spaces. Provides smooth transition with smaller footprint than full radius. Ideal for compact store layouts.',
+          'Section 3: Gondola Options - Z-Line Half Radius',
+          ['gondola']
+        );
+      } else {
+        provideIdentificationResult(
+          'Corner Solutions',
+          'Corner shelving units available in multiple styles: inside corner (90°), box corner (enclosed), radius (curved), and half-radius. Each designed to maximize corner space utilization.',
+          'Corner Solutions & Section 3',
+          ['insideCorner', 'boxCorner', 'gondola']
+        );
+      }
+    }, 300);
+  };
+  
+  // CANOPY PROGRESSIVE CLARIFICATION HANDLERS
+  const handleCanopyClarification = (canopyType) => {
+    const canopyLabels = {
+      canopy_guard: 'Gondola guard system',
+      canopy_insert: 'Guard insert/trim',
+      canopy_bracket: 'Canopy bracket',
+      canopy_fascia: 'Fascia support',
+      canopy_other: 'Something else'
+    };
+    
+    addMessage('user', canopyLabels[canopyType]);
+    
+    setTimeout(() => {
+      if (canopyType === 'canopy_guard') {
+        provideIdentificationResult(
+          'Gondola Guard System',
+          'Protective canopy system that runs along the top of gondola runs. Provides professional finished appearance and protects merchandise from overhead lighting. Can support signage. Available with various decorative insert options.',
+          'Section 3: Gondola Options - Gondola Guard System',
+          ['gondola', 'gondolaAccessories']
+        );
+      } else if (canopyType === 'canopy_insert') {
+        provideIdentificationResult(
+          'Gondola Guard Insert/Trim',
+          'Decorative inserts for gondola guard system. Options include stainless steel inserts, colored trim pieces, and custom designs. Enhances visual appeal and brand identity.',
+          'Section 3: Gondola Options - Guard Insert Trim',
+          ['gondola', 'gondolaAccessories']
+        );
+      } else if (canopyType === 'canopy_bracket') {
+        // Re-route to bracket clarification
+        setConversationState(prev => ({
+          ...prev,
+          identifyCategory: 'bracket',
+          identifyDetails: { ...prev.identifyDetails, systemType: 'sys_canopy' }
+        }));
+        handleCanopyBracketType('canopy_gondola'); // Default to asking for mount type
+      } else if (canopyType === 'canopy_fascia') {
+        provideIdentificationResult(
+          'Fascia Support Bracket (Shelf Mount)',
+          'Bracket that mounts to gondola shelf to support fascia panels and signage. Adjustable height for flexible sign positioning. Essential for elevated signage displays.',
+          'Section 5: Gondola Accessories - Canopy Brackets',
+          ['gondolaAccessories']
+        );
+      } else {
+        addMessage('bot', "No problem! Can you describe:\n\n• Is it for mounting, decoration, or structure?\n• Location (top of gondola, shelf-mounted, etc.)\n• Any part numbers or markings\n\nOr I can connect you with support:", [
+          { id: 'describe_again', label: 'Provide more details' },
+          { id: 'contact_support', label: 'Contact support' }
+        ]);
+      }
+    }, 300);
+  };
+  
+  // MOBILE PROGRESSIVE CLARIFICATION HANDLERS
+  const handleMobileClarification = (mobileType) => {
+    const mobileLabels = {
+      mobile_foursided: 'Four-sided displayer',
+      mobile_base: 'Mobile base (casters for gondola)',
+      mobile_caster: 'Individual caster/wheel',
+      mobile_unsure: 'Not sure'
+    };
+    
+    addMessage('user', mobileLabels[mobileType]);
+    
+    setTimeout(() => {
+      if (mobileType === 'mobile_foursided') {
+        provideIdentificationResult(
+          'Four-Sided Displayer',
+          'Mobile four-sided display unit with heavy-duty casters. Perfect for impulse merchandise, seasonal displays, and promotional items. Can be positioned anywhere in store. Features lockable wheels for stability when positioned.',
+          'Four-Sided Displayers',
+          ['fourSided']
+        );
+      } else if (mobileType === 'mobile_base') {
+        provideIdentificationResult(
+          'Mobile Base System',
+          'Mobile base with heavy-duty locking casters for movable gondola fixtures. Converts standard gondola into mobile unit. Includes locking wheels for secure positioning. Allows flexible store layout changes.',
+          'Gondola Accessories - Mobile Bases',
+          ['gondola', 'gondolaAccessories']
+        );
+      } else if (mobileType === 'mobile_caster') {
+        provideIdentificationResult(
+          'Replacement Casters/Wheels',
+          'Individual replacement casters and wheels for mobile bases and displayers. Various load capacities and wheel sizes available. Includes both swivel and fixed caster options.',
+          'Gondola Accessories - Mobile Components',
+          ['gondolaAccessories']
+        );
+      } else {
+        provideIdentificationResult(
+          'Mobile Display Solutions',
+          'Mobile display options include four-sided displayers, mobile gondola bases with casters, and replacement wheels. All feature locking mechanisms for secure positioning.',
+          'Mobile Display Solutions',
+          ['fourSided', 'gondolaAccessories']
+        );
+      }
+    }, 300);
+  };
+  
+  // SPECIALTY ITEM PROGRESSIVE CLARIFICATION HANDLERS
+  const handleSpecialtyClarification = (specType) => {
+    const specLabels = {
+      spec_kickplate: 'Kickplate',
+      spec_topcap: 'Top cap',
+      spec_postcap: 'Post end cap',
+      spec_spreader: 'Spreader bar',
+      spec_other: 'Something else'
+    };
+    
+    addMessage('user', specLabels[specType]);
+    
+    setTimeout(() => {
+      if (specType === 'spec_kickplate') {
+        provideIdentificationResult(
+          'Kickplate',
+          'Kickplates run along the bottom of gondola sections to protect the base and provide a finished look. Available in various lengths to match section sizes (3\', 4\', etc.). Snap-in installation.',
+          'Section 4: Gondola Unit Parts',
+          ['gondola']
+        );
+      } else if (specType === 'spec_topcap') {
+        provideIdentificationResult(
+          'Top Cap',
+          'Top caps finish the top of gondola uprights. Provides clean professional appearance and protects upright tops from damage. Simple snap-on installation.',
+          'Section 4: Gondola Unit Parts',
+          ['gondola']
+        );
+      } else if (specType === 'spec_postcap') {
+        provideIdentificationResult(
+          'Post End Caps',
+          'End caps that finish the ends of gondola posts/uprights. Sold in pairs (one for each end). Creates professional finished appearance. Available in various colors to match upright finish.',
+          'Section 4: Gondola Unit Parts',
+          ['gondola']
+        );
+      } else if (specType === 'spec_spreader') {
+        provideIdentificationResult(
+          'Bottom Spreader',
+          'Bottom spreader bars connect between uprights at the base level. Provides structural rigidity and stability to gondola sections. Essential for proper gondola assembly.',
+          'Section 4: Gondola Unit Parts',
+          ['gondola']
+        );
+      } else {
+        addMessage('bot', "No problem! Can you describe:\n\n• Where it's located on the fixture\n• What it does or covers\n• Approximate size\n\nOr I can connect you with support:", [
+          { id: 'describe_again', label: 'Provide more details' },
+          { id: 'contact_support', label: 'Contact support' }
+        ]);
+      }
+    }, 300);
+  };
+  
   // Final identification result display
   const provideIdentificationResult = (componentName, description, catalogRef, productKeys) => {
     const products = productKeys.map(key => PRODUCT_CATALOG[key]).filter(Boolean);
@@ -1449,6 +2669,167 @@ const StorflexAssistant = () => {
       ]);
     }, 1000);
   };
+  
+  const handleComponentIdentification = (optionId) => {
+    // Handle category selection
+    if (optionId.startsWith('cat_')) {
+      const categoryMap = {
+        cat_bracket: 'bracket',
+        cat_shelf: 'shelf',
+        cat_upright: 'upright',
+        cat_base: 'base',
+        cat_panel: 'panel',
+        cat_accessory: 'accessory',
+        cat_other: 'other'
+      };
+      const category = categoryMap[optionId];
+      if (category) {
+        startProgressiveClarification(category);
+      }
+      return;
+    }
+    
+    // Handle system type selection (brackets, shelves, uprights)
+    if (optionId.startsWith('sys_')) {
+      const category = conversationState.identifyCategory;
+      if (category === 'bracket') {
+        handleBracketClarification(optionId);
+      } else if (category === 'shelf') {
+        handleShelfClarification(optionId);
+      } else if (category === 'upright') {
+        handleUprightClarification(optionId);
+      }
+      return;
+    }
+    
+    // Handle base type selection
+    if (optionId.startsWith('base_')) {
+      handleBaseClarification(optionId);
+      return;
+    }
+    
+    // Handle panel type selection
+    if (optionId.startsWith('panel_')) {
+      handlePanelClarification(optionId);
+      return;
+    }
+    
+    // Handle accessory type selection
+    if (optionId.startsWith('acc_')) {
+      handleAccessoryClarification(optionId);
+      return;
+    }
+    
+    // Handle shelf type selection (for brackets)
+    if (optionId.startsWith('shelftype_')) {
+      const systemType = conversationState.identifyDetails?.systemType;
+      handleBracketShelfType(optionId, systemType);
+      return;
+    }
+    
+    // Handle bracket depth selection
+    if (optionId.startsWith('depth_')) {
+      handleBracketDepth(optionId);
+      return;
+    }
+    
+    // Handle canopy bracket type
+    if (optionId.startsWith('canopy_')) {
+      handleCanopyBracketType(optionId);
+      return;
+    }
+    
+    // Handle shelf material selection
+    if (optionId.startsWith('shelfmat_')) {
+      const systemType = conversationState.identifyDetails?.systemType;
+      handleShelfMaterial(optionId, systemType);
+      return;
+    }
+    
+    // Handle shelf depth selection
+    if (optionId.startsWith('shelfdepth_')) {
+      handleShelfDepth(optionId);
+      return;
+    }
+    
+    // Handle upright configuration
+    if (optionId.startsWith('upright_')) {
+      setConversationState(prev => ({
+        ...prev,
+        identifyDetails: { ...prev.identifyDetails, uprightConfig: optionId }
+      }));
+      handleUprightConfig(optionId);
+      return;
+    }
+    
+    // Handle height selection (uprights)
+    if (optionId.startsWith('height_')) {
+      const systemType = conversationState.identifyDetails?.systemType;
+      handleUprightHeight(optionId, systemType);
+      return;
+    }
+    
+    // Handle end panel style
+    if (optionId.startsWith('endpanel_')) {
+      handleEndPanelStyle(optionId);
+      return;
+    }
+    
+    // Handle hook type
+    if (optionId.startsWith('hook_')) {
+      handleHookType(optionId);
+      return;
+    }
+    
+    // Handle cooler type selection
+    if (optionId.startsWith('cooler_')) {
+      handleCoolerClarification(optionId);
+      return;
+    }
+    
+    // Handle corner type selection
+    if (optionId.startsWith('corner_')) {
+      handleCornerClarification(optionId);
+      return;
+    }
+    
+    // Handle canopy type selection
+    if (optionId.startsWith('canopy_') && !optionId.includes('gondola') && !optionId.includes('wall') && !optionId.includes('floor') && !optionId.includes('telescoping')) {
+      handleCanopyClarification(optionId);
+      return;
+    }
+    
+    // Handle mobile type selection
+    if (optionId.startsWith('mobile_')) {
+      handleMobileClarification(optionId);
+      return;
+    }
+    
+    // Handle specialty type selection
+    if (optionId.startsWith('spec_')) {
+      handleSpecialtyClarification(optionId);
+      return;
+    }
+    
+    // Handle final confirmation options
+    if (optionId === 'more_info' || optionId === 'yes_match') {
+      addMessage('user', 'See product details');
+      setTimeout(() => {
+        addMessage('bot', "Here's our complete product catalog where you can find this component:", null, [PRODUCT_CATALOG.allProducts]);
+        setTimeout(() => {
+          addMessage('bot', "Need to order or have questions?\n\n📞 Call: (800) 869-2040\n📧 Email: customerservice@storflex.com");
+        }, 1000);
+      }, 500);
+    } else if (optionId === 'describe_again' || optionId === 'provide_detail' || optionId === 'not_quite') {
+      addMessage('user', 'Provide more details');
+      setTimeout(() => {
+        addMessage('bot', "No problem! Please describe the component with as much detail as possible:\n\n• Type of fixture (gondola, wall, etc.)\n• Material and finish\n• Size or measurements\n• Location on the fixture\n• Any part numbers or markings");
+      }, 500);
+    } else if (optionId === 'contact_support' || optionId === 'skip_to_contact') {
+      handleSupportContact();
+    }
+  };
+  
   const handleSupportContact = () => {
     addMessage('user', 'Contact support');
     
@@ -1654,10 +3035,20 @@ const StorflexAssistant = () => {
     } else if (state.mode === 'support') {
       if (!state.supportType) {
         handleSupportRequest(optionId);
-      } else if (optionId === 'more_info' || optionId === 'describe_again' || optionId === 'contact_support' || 
-                 optionId === 'provide_detail' || optionId === 'yes_match' || optionId === 'not_quite' || 
+      } else if (optionId.startsWith('cat_') || optionId.startsWith('sys_') || 
+                 optionId.startsWith('base_') || optionId.startsWith('panel_') || 
+                 optionId.startsWith('acc_') || optionId.startsWith('shelftype_') || 
+                 optionId.startsWith('depth_') || optionId.startsWith('canopy_') || 
+                 optionId.startsWith('shelfmat_') || optionId.startsWith('shelfdepth_') ||
+                 optionId.startsWith('upright_') || optionId.startsWith('height_') ||
+                 optionId.startsWith('endpanel_') || optionId.startsWith('hook_') ||
+                 optionId.startsWith('cooler_') || optionId.startsWith('corner_') ||
+                 optionId.startsWith('mobile_') || optionId.startsWith('spec_') ||
+                 optionId === 'more_info' || optionId === 'describe_again' || 
+                 optionId === 'contact_support' || optionId === 'provide_detail' || 
+                 optionId === 'yes_match' || optionId === 'not_quite' || 
                  optionId === 'skip_to_contact') {
-        // Handle component identification follow-up actions
+        // Handle component identification flow
         handleComponentIdentification(optionId);
       } else {
         handleSupportContact();
