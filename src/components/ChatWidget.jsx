@@ -835,6 +835,9 @@ const StorflexAssistant = () => {
     const isOldMessage = messageIndex < lastMessageIndex && !isRetry;
     
     if (isOldMessage) {
+      // Close the lead form if it's open
+      setShowLeadForm(false);
+      
       // User is clicking on a previous question to change their answer
       // Truncate all messages after this one
       const newMessages = messages.slice(0, messageIndex + 1);
