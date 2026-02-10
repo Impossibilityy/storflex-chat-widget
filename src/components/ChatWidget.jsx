@@ -736,277 +736,470 @@ const StorflexAssistant = () => {
     }, 500);
   };
 
-  // Enhanced component identification using keyword matching with clarification
+  // COMPREHENSIVE CATALOG-BASED COMPONENT IDENTIFICATION SYSTEM
+  // Phase 1: Brackets & Shelves (Full Implementation)
+  // Based on Storflex 14-section catalog structure
   const identifyComponent = (description) => {
     const desc = description.toLowerCase();
-    const matches = [];
     
-    // Component keyword mappings with catalog references
-    const componentKeywords = {
-      // Shelves
-      shelf: {
-        keywords: ['shelf', 'shelve', 'shelving', 'board', 'deck', 'surface'],
-        needsClarification: ['gondola', 'wall', 'wire', 'wood', 'particle board'],
-        products: ['gondola', 'wall', 'widespan', 'clearspan'],
-        info: 'Shelves/Decking',
-        details: 'These are the horizontal surfaces that hold your products. Available in various depths and finishes (steel, particle board, wire).',
-        catalogRef: 'Sections 1-10, Shelves & Accessories',
-        clarificationQuestion: 'To help identify the right shelf, can you tell me:\n\n• What type of fixture is it for? (gondola, wall unit, end cap)\n• What material is it? (steel, wood, particle board, wire)\n• Approximate size or depth?'
-      },
-      // Brackets - COMPREHENSIVE (covers all fixture types)
-      bracket: {
-        keywords: ['bracket', 'arm', 'support', 'holder', 'clip', 'cantilever'],
-        needsClarification: ['gondola', 'wall', 'end cap', 'wire', 'widespan', 'clearspan', 'corner', 'wood', 'pharmacy'],
-        products: ['gondola', 'wall', 'widespan', 'clearspan', 'endUnit', 'gondolaAccessories'],
-        info: 'Shelf Brackets',
-        details: 'Brackets hold shelves in place and vary significantly by fixture type. Each system uses different bracket designs.',
-        catalogRef: 'Various sections based on fixture type',
-        clarificationQuestion: 'Brackets vary greatly by fixture type. Please tell me:\n\n**What type of fixture?**\n• Gondola (center aisle, double-sided)\n• Wall unit (single-sided, wall-mounted)\n• Widespan (heavy-duty, warehouse)\n• Clearspan (particle board shelves)\n• End cap/End unit\n• Corner unit\n• Other specialty fixture\n\n**Bracket style (if known):**\n• Standard shelf bracket\n• Wire shelf bracket\n• Cantilever bracket\n• Faceout/waterfall bracket\n• Angled/slant bracket',
-        specificTypes: {
-          gondola: {
-            name: 'Gondola Shelf Brackets',
-            details: 'Standard gondola brackets lock into upright slots on 1" centers. Available in various depths (12", 16", 18", 24") with front lip.',
-            catalogRef: 'Section 1-7, Gondola Accessories',
-            products: ['gondola', 'gondolaAccessories']
-          },
-          wall: {
-            name: 'Wall Unit Brackets',
-            details: 'Wall-mounted brackets attach to standards. Common types: standard shelf brackets, wood shelf brackets, glass shelf brackets.',
-            catalogRef: 'Section 8-10, Wall Unit Components',
-            products: ['wall']
-          },
-          widespan: {
-            name: 'Widespan Brackets/Beams',
-            details: 'Heavy-duty beam brackets for widespan systems. Designed for higher load capacity with reinforced construction.',
-            catalogRef: 'Section 11, Widespan Components',
-            products: ['widespan']
-          },
-          clearspan: {
-            name: 'Clearspan Brackets',
-            details: 'Brackets specifically designed for particle board decking in warehouse/backroom applications.',
-            catalogRef: 'Clearspan Components',
-            products: ['clearspan']
-          },
-          endcap: {
-            name: 'End Cap Brackets',
-            details: 'Specialized brackets for end unit displays. May include angled or straight configurations.',
-            catalogRef: 'Section 2, End Cap Components',
-            products: ['endUnit']
-          },
-          wire: {
-            name: 'Wire Shelf Brackets',
-            details: 'Brackets designed to hold wire decking/shelving. Include hooks or clips for wire shelf attachment.',
-            catalogRef: 'Gondola & Wall Accessories',
-            products: ['gondola', 'wall', 'gondolaAccessories']
-          },
-          faceout: {
-            name: 'Faceout/Waterfall Brackets',
-            details: 'Display brackets for hanging merchandise. Commonly used in apparel and soft goods retail.',
-            catalogRef: 'Gondola Accessories',
-            products: ['gondolaAccessories']
-          },
-          slant: {
-            name: 'Slant/Angled Brackets',
-            details: 'Brackets that angle shelves for better product visibility. Common in convenience stores and pharmacy.',
-            catalogRef: 'Specialty Brackets',
-            products: ['gondolaAccessories', 'rxPharmacy']
-          }
-        }
-      },
-      // Uprights/Posts
-      upright: {
-        keywords: ['upright', 'post', 'column', 'vertical', 'pole', 'standard'],
-        needsClarification: ['gondola', 'wall', 'height', 'double-sided', 'single-sided'],
-        products: ['gondola', 'wall'],
-        info: 'Uprights/Standards',
-        details: 'The vertical posts that form the frame. They have slots or holes every inch for bracket adjustment.',
-        catalogRef: 'Sections 1-8, Uprights & Standards',
-        clarificationQuestion: 'Uprights come in different configurations. Can you tell me:\n\n• Is this for gondola (center aisle) or wall mounting?\n• Is it double-sided or single-sided?\n• What height? (common: 54", 60", 72", 84")'
-      },
-      // Base
-      base: {
-        keywords: ['base', 'foot', 'feet', 'bottom', 'floor', 'shoe'],
-        needsClarification: ['gondola', 'wall', 'adjustable'],
-        products: ['gondola'],
-        info: 'Base Shoes/Feet',
-        details: 'These connect to the bottom of uprights and provide stability. Often have leveling features.',
-        catalogRef: 'Gondola Base Components',
-        clarificationQuestion: 'Base components vary by fixture. Can you tell me:\n\n• Is this for gondola or wall unit?\n• Does it have leveling screws?\n• Is it attached to the floor or freestanding?'
-      },
-      // End caps
-      endcap: {
-        keywords: ['end cap', 'endcap', 'end', 'cap', 'cover', 'closing'],
-        needsClarification: ['gondola', 'flat', 'angled'],
-        products: ['gondola', 'endUnit'],
-        info: 'End Caps/End Units',
-        details: 'Components that finish the end of a gondola run or create display areas at aisle ends.',
-        catalogRef: 'Section 2, End Caps & End Units',
-        clarificationQuestion: 'End caps come in different styles. Can you tell me:\n\n• Is this a flat end cap or angled display?\n• Is it at the end of a gondola run?\n• Does it have shelving or is it decorative?'
-      },
-      // Corners
-      corner: {
-        keywords: ['corner', 'angle', 'turn', 'l-shape'],
-        needsClarification: ['inside', 'outside', 'box'],
-        products: ['insideCorner', 'boxCorner'],
-        info: 'Corner Units',
-        details: 'Special units designed to utilize corner spaces effectively.',
-        catalogRef: 'Corner Solutions section',
-        clarificationQuestion: 'Corner units come in different types. Can you tell me:\n\n• Is this an inside corner (90° angle) or box corner (enclosed)?\n• What angle - 90° or other?\n• Is it part of a gondola run or standalone?'
-      },
-      // Backs/Panels
-      back: {
-        keywords: ['back', 'panel', 'backing', 'rear', 'pegboard', 'slatwall'],
-        needsClarification: ['pegboard', 'slatwall', 'solid', 'wall', 'gondola'],
-        products: ['gondola', 'wall'],
-        info: 'Back Panels',
-        details: 'Vertical panels that close the back of wall units or provide hanging surfaces (pegboard/slatwall).',
-        catalogRef: 'Wall Unit components & Gondola backs',
-        clarificationQuestion: 'Back panels have different types. Can you tell me:\n\n• Is it pegboard, slatwall, or solid?\n• Is it for wall units or gondola?\n• Does it have holes/slots or is it flat?'
-      },
-      // Dividers
-      divider: {
-        keywords: ['divider', 'fence', 'separator', 'partition'],
-        needsClarification: ['wire', 'solid', 'height'],
-        products: ['gondolaAccessories'],
-        info: 'Shelf Dividers/Fences',
-        details: 'Accessories that separate products on shelves or prevent items from falling.',
-        catalogRef: 'Gondola Accessories',
-        clarificationQuestion: 'Dividers come in various styles. Can you tell me:\n\n• Is it wire or solid material?\n• Approximately how tall is it?\n• Does it attach to front or back of shelf?'
-      },
-      // Hooks/Pegs
-      hook: {
-        keywords: ['hook', 'peg', 'prong', 'hanger'],
-        needsClarification: ['pegboard', 'slatwall', 'wire', 'price'],
-        products: ['gondolaAccessories'],
-        info: 'Hooks & Pegboard Accessories',
-        details: 'Various hooks and pegs for hanging merchandise on pegboard or slatwall backs.',
-        catalogRef: 'Accessories section',
-        clarificationQuestion: 'Hooks vary by backing type. Can you tell me:\n\n• Is it for pegboard or slatwall?\n• Single prong or double?\n• Is it a price channel holder or merchandise hook?'
-      },
-      // Baskets
-      basket: {
-        keywords: ['basket', 'bin', 'container', 'wire'],
-        needsClarification: ['wire', 'plastic', 'size', 'mount'],
-        products: ['gondolaAccessories'],
-        info: 'Wire Baskets & Bins',
-        details: 'Wire or plastic containers that attach to shelving for bulk or loose items.',
-        catalogRef: 'Accessories section',
-        clarificationQuestion: 'Baskets vary in style and mounting. Can you tell me:\n\n• Is it wire or plastic?\n• Approximate size? (small, medium, large)\n• How does it attach? (clips on shelf, hooks on back?)'
-      }
+    // Detect primary component category
+    const componentCategories = {
+      bracket: ['bracket', 'arm', 'support', 'holder', 'clip', 'mount', 'cantilever'],
+      shelf: ['shelf', 'shelve', 'shelving', 'deck', 'board', 'surface', 'decking'],
+      upright: ['upright', 'post', 'column', 'vertical', 'standard', 'frame', 'pole'],
+      base: ['base', 'foot', 'feet', 'bottom', 'shoe', 'leg'],
+      panel: ['panel', 'back', 'backing', 'pegboard', 'slatwall', 'wire grid'],
+      accessory: ['hook', 'peg', 'divider', 'fence', 'basket', 'bin', 'sign holder', 'price', 'retainer'],
+      other: []
     };
     
-    // Check for keyword matches
-    Object.keys(componentKeywords).forEach(componentType => {
-      const component = componentKeywords[componentType];
-      const hasMatch = component.keywords.some(keyword => desc.includes(keyword));
-      
-      if (hasMatch) {
-        // Check if we can identify a specific subtype (especially for brackets)
-        let specificMatch = null;
-        
-        if (component.specificTypes) {
-          // Check for specific bracket types
-          if (desc.includes('gondola')) specificMatch = component.specificTypes.gondola;
-          else if (desc.includes('wall')) specificMatch = component.specificTypes.wall;
-          else if (desc.includes('widespan') || desc.includes('heavy duty')) specificMatch = component.specificTypes.widespan;
-          else if (desc.includes('clearspan') || desc.includes('particle board')) specificMatch = component.specificTypes.clearspan;
-          else if (desc.includes('end cap') || desc.includes('endcap')) specificMatch = component.specificTypes.endcap;
-          else if (desc.includes('wire')) specificMatch = component.specificTypes.wire;
-          else if (desc.includes('faceout') || desc.includes('waterfall') || desc.includes('hanging')) specificMatch = component.specificTypes.faceout;
-          else if (desc.includes('slant') || desc.includes('angle') || desc.includes('tilt')) specificMatch = component.specificTypes.slant;
-        }
-        
-        matches.push({
-          type: specificMatch ? specificMatch.name : component.info,
-          details: specificMatch ? specificMatch.details : component.details,
-          catalogRef: specificMatch ? specificMatch.catalogRef : component.catalogRef,
-          clarificationQuestion: component.clarificationQuestion,
-          needsClarification: component.needsClarification,
-          products: specificMatch ? 
-            specificMatch.products.map(key => PRODUCT_CATALOG[key]).filter(Boolean) : 
-            component.products.map(key => PRODUCT_CATALOG[key]).filter(Boolean),
-          hasSpecificMatch: !!specificMatch
-        });
-      }
-    });
+    let detectedCategory = null;
     
-    // Check if description is too vague (needs clarification)
-    if (matches.length > 0) {
-      const match = matches[0];
-      
-      // Check if we found a specific subtype (like "gondola bracket") - skip clarification
-      if (match.hasSpecificMatch) {
-        let responseText = `Based on your description, this sounds like:\n\n**${match.type}**\n\n${match.details}\n\n📖 **Catalog Reference:** ${match.catalogRef}`;
-        
-        addMessage('bot', responseText, null, match.products.slice(0, 2));
-        
-        setTimeout(() => {
-          addMessage('bot', "Does this match what you're looking for?", [
-            { id: 'yes_match', label: 'Yes, that\'s it!' },
-            { id: 'not_quite', label: 'Not quite, let me clarify' },
-            { id: 'contact_support', label: 'Contact support for confirmation' }
-          ]);
-        }, 1000);
-        
-        return true;
+    for (const [category, keywords] of Object.entries(componentCategories)) {
+      if (keywords.some(keyword => desc.includes(keyword))) {
+        detectedCategory = category;
+        break;
       }
-      
-      // Check if we have enough general specifics to avoid clarification
-      const hasSpecifics = match.needsClarification.some(term => desc.includes(term));
-      
-      // If description is too vague (just "bracket" without context)
-      if (!hasSpecifics && desc.split(' ').length <= 3) {
-        addMessage('bot', `I found a potential match - **${match.type}**.\n\nTo make sure I identify the right component, I need a bit more detail:\n\n${match.clarificationQuestion}`, [
-          { id: 'provide_detail', label: 'I\'ll provide more details' },
-          { id: 'skip_to_contact', label: 'Just connect me with support' }
-        ]);
-        return true;
-      }
-      
-      // If we have enough detail, provide identification
-      let responseText = `Based on your description, this sounds like:\n\n**${match.type}**\n\n${match.details}\n\n📖 **Catalog Reference:** ${match.catalogRef}`;
-      
-      addMessage('bot', responseText, null, match.products.slice(0, 2));
-      
-      setTimeout(() => {
-        addMessage('bot', "Does this match what you're looking for?", [
-          { id: 'yes_match', label: 'Yes, that\'s it!' },
-          { id: 'not_quite', label: 'Not quite, let me clarify' },
-          { id: 'contact_support', label: 'Contact support for confirmation' }
-        ]);
-      }, 1000);
-      
-      return true;
-    } else {
-      // No match found
-      addMessage('bot', "I couldn't identify that specific component from your description. Let me connect you with our support team who can help:\n\n📞 **Phone:** (800) 869-2040\n📧 **Email:** customerservice@storflex.com\n\nThey can identify parts from photos or detailed descriptions.", [
-        { id: 'describe_again', label: 'Try describing it differently' },
-        { id: 'contact_support', label: 'Contact support' }
+    }
+    
+    // If no category detected, ask user
+    if (!detectedCategory) {
+      addMessage('bot', "I'd like to help identify that component! What general type is it?", [
+        { id: 'cat_bracket', label: 'Bracket/Mount' },
+        { id: 'cat_shelf', label: 'Shelf/Deck' },
+        { id: 'cat_upright', label: 'Upright/Post' },
+        { id: 'cat_base', label: 'Base/Foot' },
+        { id: 'cat_panel', label: 'Panel/Backing' },
+        { id: 'cat_accessory', label: 'Accessory' },
+        { id: 'cat_other', label: 'Something else' }
       ]);
-      
-      return false;
+      return;
+    }
+    
+    // Start progressive clarification based on category
+    setConversationState(prev => ({ 
+      ...prev, 
+      identifyCategory: detectedCategory,
+      identifyDetails: { originalDescription: description }
+    }));
+    
+    startProgressiveClarification(detectedCategory);
+  };
+  
+  // Start progressive clarification flow
+  const startProgressiveClarification = (category) => {
+    switch(category) {
+      case 'bracket':
+        addMessage('bot', "I can help identify that bracket! **What type of shelving system** is it for?", [
+          { id: 'sys_gondola', label: 'Gondola (center aisle)' },
+          { id: 'sys_wall', label: 'Wall unit' },
+          { id: 'sys_widespan', label: 'Widespan (heavy duty)' },
+          { id: 'sys_clearspan', label: 'Clearspan (warehouse)' },
+          { id: 'sys_endcap', label: 'End cap/End unit' },
+          { id: 'sys_canopy', label: 'Canopy/Sign system' },
+          { id: 'sys_unsure', label: 'Not sure' }
+        ]);
+        break;
+        
+      case 'shelf':
+        addMessage('bot', "I can help identify that shelf! **What type of shelving system** is it for?", [
+          { id: 'sys_gondola', label: 'Gondola (center aisle)' },
+          { id: 'sys_wall', label: 'Wall unit' },
+          { id: 'sys_widespan', label: 'Widespan (heavy duty)' },
+          { id: 'sys_clearspan', label: 'Clearspan (warehouse)' },
+          { id: 'sys_pharmacy', label: 'Pharmacy display' },
+          { id: 'sys_unsure', label: 'Not sure' }
+        ]);
+        break;
+        
+      // Simplified handling for other categories (will expand in later phases)
+      case 'upright':
+      case 'base':
+      case 'panel':
+      case 'accessory':
+      case 'other':
+        addMessage('bot', `I can help identify that component! To ensure accuracy, let me connect you with our support team:\n\n📞 **Phone:** (800) 869-2040\n📧 **Email:** customerservice@storflex.com\n\nThey can identify any component from photos or detailed descriptions.`, [
+          { id: 'contact_support', label: 'Contact support' },
+          { id: 'describe_again', label: 'Try describing differently' }
+        ]);
+        break;
     }
   };
-
-  const handleComponentIdentification = (optionId) => {
-    if (optionId === 'more_info' || optionId === 'yes_match') {
-      addMessage('user', 'See product details');
-      setTimeout(() => {
-        addMessage('bot', "Here's our complete product catalog where you can find replacement parts:", null, [PRODUCT_CATALOG.allProducts]);
-        setTimeout(() => {
-          addMessage('bot', "Need to order parts or have questions?\n\n📞 Call: (800) 869-2040\n📧 Email: customerservice@storflex.com");
-        }, 1000);
-      }, 500);
-    } else if (optionId === 'describe_again' || optionId === 'provide_detail' || optionId === 'not_quite') {
-      addMessage('user', 'Provide more details');
-      setTimeout(() => {
-        addMessage('bot', "No problem! Please describe the component with as much detail as possible:\n\n• Type of fixture (gondola, wall, end cap, etc.)\n• Material and color\n• Size or measurements\n• Where it's located on the fixture\n• Any numbers or markings");
-      }, 500);
-    } else if (optionId === 'contact_support' || optionId === 'skip_to_contact') {
-      handleSupportContact();
-    }
+  
+  // Handle bracket clarification (FULL IMPLEMENTATION)
+  const handleBracketClarification = (systemType) => {
+    const systemLabels = {
+      sys_gondola: 'Gondola (center aisle)',
+      sys_wall: 'Wall unit',
+      sys_widespan: 'Widespan (heavy duty)',
+      sys_clearspan: 'Clearspan (warehouse)',
+      sys_endcap: 'End cap/End unit',
+      sys_canopy: 'Canopy/Sign system',
+      sys_unsure: 'Not sure'
+    };
+    
+    addMessage('user', systemLabels[systemType]);
+    
+    setConversationState(prev => ({
+      ...prev,
+      identifyDetails: { ...prev.identifyDetails, systemType }
+    }));
+    
+    setTimeout(() => {
+      if (systemType === 'sys_gondola') {
+        addMessage('bot', "What **type of shelf** does this bracket hold?", [
+          { id: 'shelftype_steel', label: 'Steel deck' },
+          { id: 'shelftype_wire', label: 'Wire shelf' },
+          { id: 'shelftype_wood', label: 'Wood shelf' },
+          { id: 'shelftype_particle', label: 'Particle board' },
+          { id: 'shelftype_glass', label: 'Glass' },
+          { id: 'shelftype_unsure', label: 'Not sure' }
+        ]);
+      } else if (systemType === 'sys_wall') {
+        addMessage('bot', "What **type of shelf** does this bracket hold?", [
+          { id: 'shelftype_steel', label: 'Steel/metal shelf' },
+          { id: 'shelftype_wire', label: 'Wire shelf' },
+          { id: 'shelftype_wood', label: 'Wood shelf' },
+          { id: 'shelftype_glass', label: 'Glass shelf' },
+          { id: 'shelftype_unsure', label: 'Not sure' }
+        ]);
+      } else if (systemType === 'sys_widespan') {
+        provideIdentificationResult(
+          'Widespan Brackets/Beams',
+          'Heavy-duty beam brackets designed for widespan systems. These support high-capacity shelving (up to 2,000 lbs per level) and attach to widespan uprights.',
+          'Section 11: Widespan Shelving',
+          ['widespan']
+        );
+      } else if (systemType === 'sys_clearspan') {
+        provideIdentificationResult(
+          'Clearspan Brackets',
+          'Brackets specifically designed for particle board shelving in warehouse and backroom applications.',
+          'Section 12: Clearspan Shelving',
+          ['clearspan']
+        );
+      } else if (systemType === 'sys_endcap') {
+        provideIdentificationResult(
+          'End Cap Brackets',
+          'Specialized brackets for end unit displays at aisle ends. Available in straight or angled configurations.',
+          'Section 2: End Unit Displays',
+          ['endUnit']
+        );
+      } else if (systemType === 'sys_canopy') {
+        addMessage('bot', "What **mounting type** is the canopy bracket?", [
+          { id: 'canopy_gondola', label: 'Gondola mount' },
+          { id: 'canopy_wall', label: 'Wall mount' },
+          { id: 'canopy_floor', label: 'Floor mount' },
+          { id: 'canopy_telescoping', label: 'Telescoping/adjustable' }
+        ]);
+      } else {
+        addMessage('bot', "No problem! Please provide any additional details:\n\n• Approximate depth or size\n• Material (metal, chrome, etc.)\n• Any part numbers or markings\n\nOr I can connect you with support who can help identify it:", [
+          { id: 'describe_again', label: 'Provide more details' },
+          { id: 'contact_support', label: 'Contact support' }
+        ]);
+      }
+    }, 300);
   };
-
+  
+  // Handle bracket shelf type clarification
+  const handleBracketShelfType = (shelfType, systemType) => {
+    const shelfLabels = {
+      shelftype_steel: 'Steel deck',
+      shelftype_wire: 'Wire shelf',
+      shelftype_wood: 'Wood shelf',
+      shelftype_particle: 'Particle board',
+      shelftype_glass: 'Glass',
+      shelftype_unsure: 'Not sure'
+    };
+    
+    addMessage('user', shelfLabels[shelfType]);
+    
+    setTimeout(() => {
+      if (systemType === 'sys_gondola') {
+        if (shelfType === 'shelftype_steel') {
+          addMessage('bot', "What **depth** is the shelf?\n\n(Common gondola depths)", [
+            { id: 'depth_12', label: '12"' },
+            { id: 'depth_16', label: '16"' },
+            { id: 'depth_18', label: '18"' },
+            { id: 'depth_24', label: '24"' },
+            { id: 'depth_unsure', label: 'Not sure' }
+          ]);
+        } else if (shelfType === 'shelftype_wire') {
+          provideIdentificationResult(
+            'Gondola Wire Shelf Brackets',
+            'Brackets designed specifically for wire shelving on gondola systems. Feature hooks or clips to secure wire decking.',
+            'Section 5: Gondola Accessories',
+            ['gondola', 'gondolaAccessories']
+          );
+        } else if (shelfType === 'shelftype_wood') {
+          provideIdentificationResult(
+            'Wood Shelf Brackets (Gondola)',
+            'Specialized brackets for wood shelving on gondola systems. Provide sturdy support for wood decking.',
+            'Section 5: Gondola Accessories',
+            ['gondola', 'woodDisplays']
+          );
+        } else {
+          provideIdentificationResult(
+            'Gondola Shelf Brackets',
+            'Standard gondola brackets that lock into upright slots on 1" centers. Available in various depths and styles.',
+            'Section 5: Gondola Accessories',
+            ['gondola', 'gondolaAccessories']
+          );
+        }
+      } else if (systemType === 'sys_wall') {
+        provideIdentificationResult(
+          `Wall Mount Brackets - ${shelfLabels[shelfType]}`,
+          'Wall-mounted brackets attach to standards. Available in multiple depths (12", 14", 16", 18", 24") to match shelf size.',
+          'Section 8-10: Wall Unit Components',
+          ['wall']
+        );
+      }
+    }, 300);
+  };
+  
+  // Handle bracket depth clarification
+  const handleBracketDepth = (depth) => {
+    const depthLabels = {
+      depth_12: '12"',
+      depth_16: '16"',
+      depth_18: '18"',
+      depth_24: '24"',
+      depth_unsure: 'Not sure'
+    };
+    
+    addMessage('user', depthLabels[depth]);
+    
+    setTimeout(() => {
+      const depthText = depth === 'depth_unsure' ? 'various depths' : depthLabels[depth];
+      provideIdentificationResult(
+        `Gondola Steel Deck Bracket - ${depthText}`,
+        `Standard gondola bracket for ${depthText} steel deck shelves. Locks into upright slots on 1" centers. Features front lip for shelf retention. Load capacity: 24,000 inch-pounds.`,
+        'Section 5: Gondola Accessories',
+        ['gondola', 'gondolaAccessories']
+      );
+    }, 300);
+  };
+  
+  // Handle canopy bracket type clarification
+  const handleCanopyBracketType = (canopyType) => {
+    const canopyLabels = {
+      canopy_gondola: 'Gondola mount',
+      canopy_wall: 'Wall mount',
+      canopy_floor: 'Floor mount',
+      canopy_telescoping: 'Telescoping/adjustable'
+    };
+    
+    addMessage('user', canopyLabels[canopyType]);
+    
+    setTimeout(() => {
+      if (canopyType === 'canopy_gondola') {
+        provideIdentificationResult(
+          'Gondola Mount Adjustable Canopy Bracket',
+          'Mounts to gondola uprights to support canopy signage and fascia panels. Adjustable height for flexible positioning.',
+          'Section 5: Gondola Accessories - Canopy Systems',
+          ['gondola', 'gondolaAccessories']
+        );
+      } else if (canopyType === 'canopy_wall') {
+        provideIdentificationResult(
+          'Wall Mount Adjustable Canopy Bracket',
+          'Mounts to wall standards to support canopy signage. Adjustable for various sign heights.',
+          'Section 5: Canopy Systems',
+          ['wall', 'gondolaAccessories']
+        );
+      } else if (canopyType === 'canopy_floor') {
+        provideIdentificationResult(
+          'Floor Mount Bracket',
+          'Floor-mounted bracket for freestanding signage and canopy systems. Provides stable base support.',
+          'Section 5: Canopy Systems',
+          ['gondolaAccessories']
+        );
+      } else if (canopyType === 'canopy_telescoping') {
+        provideIdentificationResult(
+          'Telescoping Canopy Bracket',
+          'Adjustable telescoping bracket system for flexible canopy and sign positioning. Extends and retracts as needed.',
+          'Section 5: Canopy Systems',
+          ['gondolaAccessories']
+        );
+      }
+    }, 300);
+  };
+  
+  // Handle shelf clarification (FULL IMPLEMENTATION)
+  const handleShelfClarification = (systemType) => {
+    const systemLabels = {
+      sys_gondola: 'Gondola (center aisle)',
+      sys_wall: 'Wall unit',
+      sys_widespan: 'Widespan (heavy duty)',
+      sys_clearspan: 'Clearspan (warehouse)',
+      sys_pharmacy: 'Pharmacy display',
+      sys_unsure: 'Not sure'
+    };
+    
+    addMessage('user', systemLabels[systemType]);
+    
+    setConversationState(prev => ({
+      ...prev,
+      identifyDetails: { ...prev.identifyDetails, systemType }
+    }));
+    
+    setTimeout(() => {
+      if (systemType === 'sys_gondola') {
+        addMessage('bot', "What **material** is the shelf?", [
+          { id: 'shelfmat_steel', label: 'Steel deck' },
+          { id: 'shelfmat_wire', label: 'Wire' },
+          { id: 'shelfmat_wood', label: 'Wood' },
+          { id: 'shelfmat_particle', label: 'Particle board' },
+          { id: 'shelfmat_glass', label: 'Glass' },
+          { id: 'shelfmat_unsure', label: 'Not sure' }
+        ]);
+      } else if (systemType === 'sys_wall') {
+        addMessage('bot', "What **material** is the shelf?", [
+          { id: 'shelfmat_steel', label: 'Steel/metal' },
+          { id: 'shelfmat_wire', label: 'Wire' },
+          { id: 'shelfmat_wood', label: 'Wood' },
+          { id: 'shelfmat_glass', label: 'Glass' },
+          { id: 'shelfmat_melamine', label: 'Melamine/laminate' },
+          { id: 'shelfmat_unsure', label: 'Not sure' }
+        ]);
+      } else if (systemType === 'sys_widespan') {
+        provideIdentificationResult(
+          'Widespan Shelves (Heavy Duty)',
+          'Heavy-duty steel decking with wire reinforcement for bulk storage. Supports up to 2,000 lbs per level. Ideal for warehouse and backroom applications.',
+          'Section 11: Widespan Shelving',
+          ['widespan']
+        );
+      } else if (systemType === 'sys_clearspan') {
+        provideIdentificationResult(
+          'Clearspan Shelves',
+          'Particle board shelving designed for warehouse and backroom storage. Economical solution for non-display storage needs.',
+          'Section 12: Clearspan Shelving',
+          ['clearspan']
+        );
+      } else if (systemType === 'sys_pharmacy') {
+        provideIdentificationResult(
+          'Pharmacy Display Shelves',
+          'Specialized shelving for pharmacy environments including Rx bay shelves and prescription storage. Available in various materials and configurations.',
+          'Section 13: RX Pharmacy Displays',
+          ['rxPharmacy']
+        );
+      } else {
+        addMessage('bot', "No problem! Please provide any additional details:\n\n• Approximate size or depth\n• Color or finish\n• Any part numbers or markings\n\nOr I can connect you with support:", [
+          { id: 'describe_again', label: 'Provide more details' },
+          { id: 'contact_support', label: 'Contact support' }
+        ]);
+      }
+    }, 300);
+  };
+  
+  // Handle shelf material clarification
+  const handleShelfMaterial = (material, systemType) => {
+    const materialLabels = {
+      shelfmat_steel: 'Steel deck',
+      shelfmat_wire: 'Wire',
+      shelfmat_wood: 'Wood',
+      shelfmat_particle: 'Particle board',
+      shelfmat_glass: 'Glass',
+      shelfmat_melamine: 'Melamine/laminate',
+      shelfmat_unsure: 'Not sure'
+    };
+    
+    addMessage('user', materialLabels[material]);
+    
+    setTimeout(() => {
+      if (systemType === 'sys_gondola') {
+        if (material === 'shelfmat_steel') {
+          addMessage('bot', "What **depth** is the steel deck shelf?\n\n(Common gondola depths)", [
+            { id: 'shelfdepth_12', label: '12"' },
+            { id: 'shelfdepth_16', label: '16"' },
+            { id: 'shelfdepth_18', label: '18"' },
+            { id: 'shelfdepth_24', label: '24"' },
+            { id: 'shelfdepth_unsure', label: 'Not sure' }
+          ]);
+        } else if (material === 'shelfmat_wire') {
+          provideIdentificationResult(
+            'Gondola Wire Shelves',
+            'Wire deck shelving for gondola systems. Allows visibility and air circulation. Common in cooler applications and bulk merchandise.',
+            'Section 6: Gondola Shelf Options',
+            ['gondola', 'gondolaAccessories']
+          );
+        } else if (material === 'shelfmat_wood') {
+          provideIdentificationResult(
+            'Wood Shelves (Gondola)',
+            'Wood shelving for gondola systems. Premium appearance for specialty retail. Available in various finishes.',
+            'Section 6: Gondola Shelf Options',
+            ['gondola', 'woodDisplays']
+          );
+        } else if (material === 'shelfmat_particle') {
+          provideIdentificationResult(
+            'Particle Board Shelves (Gondola)',
+            'Economical particle board shelving for gondola systems. Good for lighter merchandise.',
+            'Section 6: Gondola Shelf Options',
+            ['gondola']
+          );
+        } else if (material === 'shelfmat_glass') {
+          provideIdentificationResult(
+            'Glass Shelves (Gondola)',
+            'Glass shelving for premium display. Common in cosmetics, jewelry, and high-end retail.',
+            'Section 6: Gondola Shelf Options',
+            ['gondola']
+          );
+        } else {
+          provideIdentificationResult(
+            'Gondola Shelves',
+            'Gondola shelving available in multiple materials: steel deck, wire, wood, particle board, and glass. Various depths from 12" to 24".',
+            'Section 6: Gondola Shelf Options',
+            ['gondola']
+          );
+        }
+      } else if (systemType === 'sys_wall') {
+        provideIdentificationResult(
+          `Wall Unit Shelves - ${materialLabels[material]}`,
+          `Wall-mounted shelving in ${materialLabels[material]}. Available in multiple depths to match your display needs.`,
+          'Section 8-10: Wall Unit Components',
+          ['wall']
+        );
+      }
+    }, 300);
+  };
+  
+  // Handle shelf depth clarification
+  const handleShelfDepth = (depth) => {
+    const depthLabels = {
+      shelfdepth_12: '12"',
+      shelfdepth_16: '16"',
+      shelfdepth_18: '18"',
+      shelfdepth_24: '24"',
+      shelfdepth_unsure: 'Not sure'
+    };
+    
+    addMessage('user', depthLabels[depth]);
+    
+    setTimeout(() => {
+      const depthText = depth === 'shelfdepth_unsure' ? 'various depths' : depthLabels[depth];
+      provideIdentificationResult(
+        `Gondola Steel Deck Shelf - ${depthText}`,
+        `Steel deck shelving for gondola systems in ${depthText} depth. Heavy-duty construction with 24,000 inch-pound load rating. Available in various lengths and finishes.`,
+        'Section 6: Gondola Shelf Options',
+        ['gondola']
+      );
+    }, 300);
+  };
+  
+  // Final identification result display
+  const provideIdentificationResult = (componentName, description, catalogRef, productKeys) => {
+    const products = productKeys.map(key => PRODUCT_CATALOG[key]).filter(Boolean);
+    
+    const resultText = `**${componentName}**\n\n${description}\n\n📖 **Catalog Reference:** ${catalogRef}`;
+    
+    addMessage('bot', resultText, null, products.slice(0, 2));
+    
+    setTimeout(() => {
+      addMessage('bot', "Does this match what you're looking for?", [
+        { id: 'yes_match', label: 'Yes, that\'s it!' },
+        { id: 'not_quite', label: 'Not quite, let me clarify' },
+        { id: 'contact_support', label: 'Contact support for confirmation' }
+      ]);
+    }, 1000);
+  };
   const handleSupportContact = () => {
     addMessage('user', 'Contact support');
     
