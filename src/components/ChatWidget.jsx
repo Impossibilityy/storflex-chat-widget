@@ -841,26 +841,6 @@ const StorflexAssistant = () => {
   const processOptionSelection = (optionId) => {
     // Normal flow - clicking on the current active message
     processOptionSelectionWithState(optionId, conversationState);
-          handleQuoteRequest(optionId);
-        } else if (optionId.includes('_end') || optionId.includes('_corner') || optionId.includes('_checkout')) {
-          handleDisplayType(optionId);
-        } else {
-          handleItems(optionId);
-        }
-      } else if (conversationState.displayType && !conversationState.timeline) {
-        handleTimeline(optionId);
-      } else if (!conversationState.adjustability) {
-        handleAdjustability(optionId);
-      } else if (!conversationState.spaceInfo) {
-        handleSpaceInfo(optionId);
-      } else if (conversationState.spaceInfo === 'sections' && !conversationState.sectionCount) {
-        handleSectionCount(optionId);
-      } else if (!conversationState.timeline) {
-        handleTimeline(optionId);
-      } else {
-        handleQuoteRequest(optionId);
-      }
-    }
   };
 
   const handleTextSubmit = (e) => {
