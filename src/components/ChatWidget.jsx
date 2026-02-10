@@ -737,18 +737,21 @@ const StorflexAssistant = () => {
   };
 
   // COMPREHENSIVE CATALOG-BASED COMPONENT IDENTIFICATION SYSTEM
-  // Phase 1: Brackets & Shelves (Full Implementation)
+  // Phase 1: Brackets & Shelves (Full Implementation with NLP)
   // Based on Storflex 14-section catalog structure
   const identifyComponent = (description) => {
     const desc = description.toLowerCase();
     
+    // STEP 1: Extract contextual information from natural language
+    const context = extractContextFromDescription(desc);
+    
     // Detect primary component category
     const componentCategories = {
-      bracket: ['bracket', 'arm', 'support', 'holder', 'clip', 'mount', 'cantilever'],
-      shelf: ['shelf', 'shelve', 'shelving', 'deck', 'board', 'surface', 'decking'],
-      upright: ['upright', 'post', 'column', 'vertical', 'standard', 'frame', 'pole'],
-      base: ['base', 'foot', 'feet', 'bottom', 'shoe', 'leg'],
-      panel: ['panel', 'back', 'backing', 'pegboard', 'slatwall', 'wire grid'],
+      bracket: ['bracket', 'arm', 'support', 'holder', 'clip', 'mount', 'cantilever', 'hang', 'attach'],
+      shelf: ['shelf', 'shelve', 'shelving', 'deck', 'board', 'surface', 'decking', 'level', 'tier'],
+      upright: ['upright', 'post', 'column', 'vertical', 'standard', 'frame', 'pole', 'tower'],
+      base: ['base', 'foot', 'feet', 'bottom', 'shoe', 'leg', 'foundation'],
+      panel: ['panel', 'back', 'backing', 'pegboard', 'slatwall', 'wire grid', 'backboard'],
       accessory: ['hook', 'peg', 'divider', 'fence', 'basket', 'bin', 'sign holder', 'price', 'retainer'],
       other: []
     };
@@ -760,6 +763,12 @@ const StorflexAssistant = () => {
         detectedCategory = category;
         break;
       }
+    }
+    
+    // If category detected and we have enough context, provide smart identification
+    if (detectedCategory && (context.systemType || context.material || context.depth || context.height)) {
+      provideSmartIdentification(detectedCategory, context);
+      return;
     }
     
     // If no category detected, ask user
@@ -780,10 +789,250 @@ const StorflexAssistant = () => {
     setConversationState(prev => ({ 
       ...prev, 
       identifyCategory: detectedCategory,
-      identifyDetails: { originalDescription: description }
+      identifyDetails: { originalDescription: description, context }
     }));
     
     startProgressiveClarification(detectedCategory);
+  };
+  
+  // Extract context clues from natural language description
+  const extractContextFromDescription = (desc) => {
+    const context = {};
+    
+    // SYSTEM TYPE detection
+    if (desc.includes('gondola') || desc.includes('center aisle') || desc.includes('double sided') || desc.includes('middle of store')) {
+      context.systemType = 'gondola';
+    } else if (desc.includes('wall') || desc.includes('perimeter') || desc.includes('against wall') || desc.includes('wall mount')) {
+      context.systemType = 'wall';
+    } else if (desc.includes('widespan') || desc.includes('heavy duty') || desc.includes('warehouse') || desc.includes('bulk storage')) {
+      context.systemType = 'widespan';
+    } else if (desc.includes('clearspan') || desc.includes('backroom') || desc.includes('particle board')) {
+      context.systemType = 'clearspan';
+    } else if (desc.includes('end cap') || desc.includes('endcap') || desc.includes('end of aisle') || desc.includes('aisle end')) {
+      context.systemType = 'endcap';
+    } else if (desc.includes('canopy') || desc.includes('sign') || desc.includes('header') || desc.includes('fascia')) {
+      context.systemType = 'canopy';
+    } else if (desc.includes('pharmacy') || desc.includes('rx') || desc.includes('prescription')) {
+      context.systemType = 'pharmacy';
+    }
+    
+    // MATERIAL detection
+    if (desc.includes('steel') || desc.includes('metal')) {
+      context.material = 'steel';
+    } else if (desc.includes('wire') || desc.includes('mesh') || desc.includes('grid')) {
+      context.material = 'wire';
+    } else if (desc.includes('wood') || desc.includes('wooden')) {
+      context.material = 'wood';
+    } else if (desc.includes('particle') || desc.includes('pressboard') || desc.includes('chipboard')) {
+      context.material = 'particle';
+    } else if (desc.includes('glass')) {
+      context.material = 'glass';
+    } else if (desc.includes('melamine') || desc.includes('laminate')) {
+      context.material = 'melamine';
+    }
+    
+    // DEPTH detection (inches) - look for common patterns
+    const depthPatterns = [
+      { pattern: /(\d+)\s*(?:inch|in|"|')\s*(?:deep|depth)/i, multiplier: 1 },
+      { pattern: /(\d+)(?:"|''|in)\s*(?:deep|depth)?/i, multiplier: 1 },
+      { pattern: /(\d+)\s*(?:foot|ft|feet)\s*(?:deep|depth)/i, multiplier: 12 },
+      { pattern: /twelve\s*(?:inch)/i, value: 12 },
+      { pattern: /sixteen\s*(?:inch)/i, value: 16 },
+      { pattern: /eighteen\s*(?:inch)/i, value: 18 },
+      { pattern: /twenty.?four\s*(?:inch)/i, value: 24 }
+    ];
+    
+    for (const { pattern, multiplier, value } of depthPatterns) {
+      const match = desc.match(pattern);
+      if (match) {
+        context.depth = value || parseInt(match[1]) * (multiplier || 1);
+        break;
+      }
+    }
+    
+    // Common depth keywords
+    if (!context.depth) {
+      if (desc.includes('12') || desc.includes('twelve')) context.depth = 12;
+      else if (desc.includes('16') || desc.includes('sixteen')) context.depth = 16;
+      else if (desc.includes('18') || desc.includes('eighteen')) context.depth = 18;
+      else if (desc.includes('24') || desc.includes('twenty-four') || desc.includes('two feet')) context.depth = 24;
+    }
+    
+    // HEIGHT detection (for uprights)
+    const heightPatterns = [
+      { pattern: /(\d+)\s*(?:inch|in|"|')\s*(?:tall|high|height)/i, multiplier: 1 },
+      { pattern: /(\d+)(?:"|''|in)\s*(?:tall|high)?/i, multiplier: 1 },
+      { pattern: /(\d+)\s*(?:foot|ft|feet)\s*(?:tall|high)/i, multiplier: 12 }
+    ];
+    
+    for (const { pattern, multiplier } of heightPatterns) {
+      const match = desc.match(pattern);
+      if (match) {
+        context.height = parseInt(match[1]) * (multiplier || 1);
+        break;
+      }
+    }
+    
+    // Common upright heights
+    if (!context.height && (desc.includes('upright') || desc.includes('post') || desc.includes('standard'))) {
+      if (desc.includes('48') || desc.includes('four feet')) context.height = 48;
+      else if (desc.includes('54')) context.height = 54;
+      else if (desc.includes('60') || desc.includes('five feet')) context.height = 60;
+      else if (desc.includes('72') || desc.includes('six feet')) context.height = 72;
+      else if (desc.includes('84') || desc.includes('seven feet')) context.height = 84;
+      else if (desc.includes('96') || desc.includes('eight feet')) context.height = 96;
+    }
+    
+    // DESCRIPTIVE TERMS
+    if (desc.includes('adjustable') || desc.includes('movable') || desc.includes('adjust')) {
+      context.adjustable = true;
+    }
+    if (desc.includes('heavy duty') || desc.includes('reinforced') || desc.includes('strong')) {
+      context.heavyDuty = true;
+    }
+    if (desc.includes('chrome') || desc.includes('silver') || desc.includes('stainless')) {
+      context.finish = 'chrome';
+    }
+    if (desc.includes('black') || desc.includes('dark')) {
+      context.finish = 'black';
+    }
+    if (desc.includes('white') || desc.includes('light')) {
+      context.finish = 'white';
+    }
+    
+    // LOCATION/POSITION terms
+    if (desc.includes('front') || desc.includes('facing')) {
+      context.position = 'front';
+    }
+    if (desc.includes('back') || desc.includes('rear')) {
+      context.position = 'back';
+    }
+    if (desc.includes('top') || desc.includes('upper')) {
+      context.position = 'top';
+    }
+    if (desc.includes('bottom') || desc.includes('lower') || desc.includes('floor')) {
+      context.position = 'bottom';
+    }
+    
+    return context;
+  };
+  
+  // Provide smart identification based on extracted context
+  const provideSmartIdentification = (category, context) => {
+    if (category === 'bracket') {
+      let componentName = 'Bracket';
+      let details = '';
+      let catalogRef = '';
+      let products = [];
+      
+      // Determine specific bracket type from context
+      if (context.systemType === 'gondola') {
+        if (context.material === 'steel' && context.depth) {
+          componentName = `Gondola Steel Deck Bracket - ${context.depth}"`;
+          details = `Standard gondola bracket for ${context.depth}" steel deck shelves. Locks into upright slots on 1" centers. Features front lip for shelf retention. Load capacity: 24,000 inch-pounds.`;
+          catalogRef = 'Section 5: Gondola Accessories';
+          products = ['gondola', 'gondolaAccessories'];
+        } else if (context.material === 'wire') {
+          componentName = 'Gondola Wire Shelf Brackets';
+          details = 'Brackets designed specifically for wire shelving on gondola systems. Feature hooks or clips to secure wire decking.';
+          catalogRef = 'Section 5: Gondola Accessories';
+          products = ['gondola', 'gondolaAccessories'];
+        } else if (context.material === 'wood') {
+          componentName = 'Wood Shelf Brackets (Gondola)';
+          details = 'Specialized brackets for wood shelving on gondola systems. Provide sturdy support for wood decking.';
+          catalogRef = 'Section 5: Gondola Accessories';
+          products = ['gondola', 'woodDisplays'];
+        } else {
+          componentName = 'Gondola Shelf Brackets';
+          details = 'Standard gondola brackets that lock into upright slots on 1" centers. Available in various depths (12", 16", 18", 24") and styles for different shelf types.';
+          catalogRef = 'Section 5: Gondola Accessories';
+          products = ['gondola', 'gondolaAccessories'];
+        }
+      } else if (context.systemType === 'wall') {
+        componentName = `Wall Mount Brackets${context.depth ? ` - ${context.depth}"` : ''}`;
+        details = `Wall-mounted brackets attach to standards. Available in multiple depths${context.depth ? ` including ${context.depth}"` : ' (12", 14", 16", 18", 24")'} to match shelf size.`;
+        catalogRef = 'Section 8-10: Wall Unit Components';
+        products = ['wall'];
+      } else if (context.systemType === 'canopy') {
+        componentName = 'Canopy Brackets';
+        details = 'Brackets for supporting canopy signage and fascia panels. Available in gondola mount, wall mount, floor mount, and telescoping configurations.';
+        catalogRef = 'Section 5: Canopy Systems';
+        products = ['gondola', 'gondolaAccessories'];
+      } else if (context.systemType === 'widespan' || context.heavyDuty) {
+        componentName = 'Widespan Brackets/Beams';
+        details = 'Heavy-duty beam brackets designed for widespan systems. These support high-capacity shelving (up to 2,000 lbs per level) and attach to widespan uprights.';
+        catalogRef = 'Section 11: Widespan Shelving';
+        products = ['widespan'];
+      } else {
+        // Not enough context, ask for system type
+        setConversationState(prev => ({ 
+          ...prev, 
+          identifyCategory: category,
+          identifyDetails: { originalDescription: '', context }
+        }));
+        startProgressiveClarification(category);
+        return;
+      }
+      
+      provideIdentificationResult(componentName, details, catalogRef, products);
+      
+    } else if (category === 'shelf') {
+      let componentName = 'Shelf';
+      let details = '';
+      let catalogRef = '';
+      let products = [];
+      
+      // Determine specific shelf type from context
+      if (context.systemType === 'gondola') {
+        if (context.material === 'steel' && context.depth) {
+          componentName = `Gondola Steel Deck Shelf - ${context.depth}"`;
+          details = `Steel deck shelving for gondola systems in ${context.depth}" depth. Heavy-duty construction with 24,000 inch-pound load rating. Available in various lengths and finishes.`;
+          catalogRef = 'Section 6: Gondola Shelf Options';
+          products = ['gondola'];
+        } else if (context.material === 'wire') {
+          componentName = 'Gondola Wire Shelves';
+          details = 'Wire deck shelving for gondola systems. Allows visibility and air circulation. Common in cooler applications and bulk merchandise.';
+          catalogRef = 'Section 6: Gondola Shelf Options';
+          products = ['gondola', 'gondolaAccessories'];
+        } else if (context.material === 'wood') {
+          componentName = 'Wood Shelves (Gondola)';
+          details = 'Wood shelving for gondola systems. Premium appearance for specialty retail. Available in various finishes.';
+          catalogRef = 'Section 6: Gondola Shelf Options';
+          products = ['gondola', 'woodDisplays'];
+        } else {
+          componentName = 'Gondola Shelves';
+          details = 'Gondola shelving available in multiple materials: steel deck, wire, wood, particle board, and glass. Various depths from 12" to 24".';
+          catalogRef = 'Section 6: Gondola Shelf Options';
+          products = ['gondola'];
+        }
+      } else if (context.systemType === 'wall') {
+        componentName = `Wall Unit Shelves${context.material ? ` - ${context.material}` : ''}`;
+        details = `Wall-mounted shelving${context.material ? ` in ${context.material}` : ''}. Available in multiple depths to match your display needs.`;
+        catalogRef = 'Section 8-10: Wall Unit Components';
+        products = ['wall'];
+      } else if (context.systemType === 'widespan' || context.heavyDuty) {
+        componentName = 'Widespan Shelves (Heavy Duty)';
+        details = 'Heavy-duty steel decking with wire reinforcement for bulk storage. Supports up to 2,000 lbs per level. Ideal for warehouse and backroom applications.';
+        catalogRef = 'Section 11: Widespan Shelving';
+        products = ['widespan'];
+      } else if (context.systemType === 'clearspan') {
+        componentName = 'Clearspan Shelves';
+        details = 'Particle board shelving designed for warehouse and backroom storage. Economical solution for non-display storage needs.';
+        catalogRef = 'Section 12: Clearspan Shelving';
+        products = ['clearspan'];
+      } else {
+        // Not enough context, ask for system type
+        setConversationState(prev => ({ 
+          ...prev, 
+          identifyCategory: category,
+          identifyDetails: { originalDescription: '', context }
+        }));
+        startProgressiveClarification(category);
+        return;
+      }
+      
+      provideIdentificationResult(componentName, details, catalogRef, products);
+    }
   };
   
   // Start progressive clarification flow
