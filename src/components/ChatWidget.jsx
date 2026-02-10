@@ -710,26 +710,137 @@ const StorflexAssistant = () => {
     }
   };
 
-  const handleOptionClick = (messageIndex, optionId) => {
-    if (!conversationState.mode) {
+  const handleOptionClick = (messageIndex, optionId, isRetry = false) => {
+    // Check if clicking on an old message (not the latest one with options)
+    const lastMessageIndex = messages.length - 1;
+    const isOldMessage = messageIndex < lastMessageIndex && !isRetry;
+    
+    if (isOldMessage) {
+      // User is clicking on a previous question to change their answer
+      // Truncate all messages after this one
+      const newMessages = messages.slice(0, messageIndex + 1);
+      setMessages(newMessages);
+      
+      // Determine what stage this message represents and reset state accordingly
+      const message = messages[messageIndex];
+      let newState = { ...conversationState };
+      
+      if (message.text?.includes("What are you working on today")) {
+        newState = {
+          mode: null,
+          intent: null,
+          businessType: null,
+          location: null,
+          items: null,
+          displayType: null,
+          adjustability: null,
+          spaceInfo: null,
+          sectionCount: null,
+          timeline: null,
+          supportType: null,
+          leadData: {}
+        };
+      } else if (message.text?.includes("What type of business")) {
+        newState.businessType = null;
+        newState.location = null;
+        newState.items = null;
+        newState.displayType = null;
+        newState.adjustability = null;
+        newState.spaceInfo = null;
+        newState.sectionCount = null;
+        newState.timeline = null;
+      } else if (message.text?.includes("Where will the shelving be located") || message.text?.includes("What type of refrigeration")) {
+        newState.location = null;
+        newState.items = null;
+        newState.displayType = null;
+        newState.adjustability = null;
+        newState.spaceInfo = null;
+        newState.sectionCount = null;
+        newState.timeline = null;
+      } else if (message.text?.includes("What will you be displaying")) {
+        newState.items = null;
+        newState.displayType = null;
+        newState.adjustability = null;
+        newState.spaceInfo = null;
+        newState.sectionCount = null;
+        newState.timeline = null;
+      } else if (message.text?.includes("end cap display") || message.text?.includes("corner solution") || message.text?.includes("at checkout")) {
+        newState.displayType = null;
+        newState.timeline = null;
+      } else if (message.text?.includes("adjustable shelves")) {
+        newState.adjustability = null;
+        newState.spaceInfo = null;
+        newState.sectionCount = null;
+        newState.timeline = null;
+      } else if (message.text?.includes("describe your space")) {
+        newState.spaceInfo = null;
+        newState.sectionCount = null;
+        newState.timeline = null;
+      } else if (message.text?.includes("How many sections")) {
+        newState.sectionCount = null;
+        newState.timeline = null;
+      } else if (message.text?.includes("timeline")) {
+        newState.timeline = null;
+      }
+      
+      // Update state synchronously
+      setConversationState(newState);
+      
+      // Process with the new reset state after a delay
+      setTimeout(() => {
+        processOptionSelectionWithState(optionId, newState);
+      }, 100);
+      return;
+    }
+    
+    // Normal flow - process the selection
+    processOptionSelection(optionId);
+  };
+
+  const processOptionSelectionWithState = (optionId, state) => {
+    // Process selection with explicit state (used after reset)
+    if (!state.mode) {
       handleIntentSelection(optionId);
-    } else if (conversationState.mode === 'support') {
-      if (!conversationState.supportType) {
+    } else if (state.mode === 'support') {
+      if (!state.supportType) {
         handleSupportRequest(optionId);
       } else {
         handleSupportContact();
       }
-    } else if (conversationState.mode === 'sales') {
-      if (!conversationState.businessType) {
+    } else if (state.mode === 'sales') {
+      if (!state.businessType) {
         handleBusinessType(optionId);
-      } else if (!conversationState.location) {
-        // Handle both regular location and cooler/freezer selections
+      } else if (!state.location) {
         handleLocation(optionId);
-      } else if ((conversationState.location === 'cooler' || conversationState.location === 'freezer' || conversationState.location === 'both_cf') && !conversationState.timeline) {
-        // Cooler/freezer path goes directly to timeline
+      } else if ((state.location === 'cooler' || state.location === 'freezer' || state.location === 'both_cf') && !state.timeline) {
         handleTimeline(optionId);
-      } else if (conversationState.location && !conversationState.items && !conversationState.displayType) {
+      } else if (state.location && !state.items && !state.displayType) {
         if (optionId === 'yes' || optionId === 'no' || optionId === 'browse') {
+          handleQuoteRequest(optionId);
+        } else if (optionId.includes('_end') || optionId.includes('_corner') || optionId.includes('_checkout')) {
+          handleDisplayType(optionId);
+        } else {
+          handleItems(optionId);
+        }
+      } else if (state.displayType && !state.timeline) {
+        handleTimeline(optionId);
+      } else if (!state.adjustability) {
+        handleAdjustability(optionId);
+      } else if (!state.spaceInfo) {
+        handleSpaceInfo(optionId);
+      } else if (state.spaceInfo === 'sections' && !state.sectionCount) {
+        handleSectionCount(optionId);
+      } else if (!state.timeline) {
+        handleTimeline(optionId);
+      } else {
+        handleQuoteRequest(optionId);
+      }
+    }
+  };
+
+  const processOptionSelection = (optionId) => {
+    // Normal flow - clicking on the current active message
+    processOptionSelectionWithState(optionId, conversationState);
           handleQuoteRequest(optionId);
         } else if (optionId.includes('_end') || optionId.includes('_corner') || optionId.includes('_checkout')) {
           handleDisplayType(optionId);
@@ -824,16 +935,30 @@ const StorflexAssistant = () => {
               
               {message.options && (
                 <div className="mt-2 sm:mt-3 space-y-2">
-                  {message.options.map((option) => (
-                    <button
-                      key={option.id}
-                      onClick={() => handleOptionClick(index, option.id)}
-                      className="w-full text-left px-3 py-2.5 sm:px-4 sm:py-3 bg-gray-50 hover:bg-blue-50 active:bg-blue-100 border border-gray-300 rounded-lg transition-all flex items-center gap-2 group text-sm sm:text-base text-gray-900 touch-manipulation"
-                    >
-                      <span className="flex-1 break-words">{option.label}</span>
-                      <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-blue-600 flex-shrink-0" />
-                    </button>
-                  ))}
+                  {message.options.map((option) => {
+                    const isCurrentQuestion = index === messages.length - 1;
+                    const isPreviousQuestion = index < messages.length - 1;
+                    
+                    return (
+                      <button
+                        key={option.id}
+                        onClick={() => handleOptionClick(index, option.id)}
+                        className={`w-full text-left px-3 py-2.5 sm:px-4 sm:py-3 border rounded-lg transition-all flex items-center gap-2 group text-sm sm:text-base text-gray-900 touch-manipulation ${
+                          isCurrentQuestion 
+                            ? 'bg-gray-50 hover:bg-blue-50 active:bg-blue-100 border-gray-300' 
+                            : 'bg-gray-100 hover:bg-gray-200 active:bg-gray-300 border-gray-400 opacity-75'
+                        }`}
+                        title={isPreviousQuestion ? "Click to change this answer" : ""}
+                      >
+                        <span className="flex-1 break-words">{option.label}</span>
+                        <ChevronRight className={`w-4 h-4 flex-shrink-0 ${
+                          isCurrentQuestion 
+                            ? 'text-gray-400 group-hover:text-blue-600' 
+                            : 'text-gray-500'
+                        }`} />
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
