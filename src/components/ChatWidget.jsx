@@ -3151,8 +3151,8 @@ const StorflexAssistant = () => {
               <div className="flex items-center gap-2 sm:gap-3">
                 <Package className="w-6 h-6 sm:w-7 sm:h-7 flex-shrink-0" />
                 <div className="min-w-0">
-                  <h1 className="text-base sm:text-lg font-bold">Storflex Assistant</h1>
-                  <p className="text-xs text-blue-100">Product Finder & Quote Generator</p>
+                  <h1 className="text-base sm:text-lg font-bold">The Storflex Assistant</h1>
+                  <p className="text-xs text-blue-100">Product Assistant</p>
                 </div>
               </div>
               <button
