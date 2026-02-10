@@ -161,6 +161,9 @@ const StorflexAssistant = () => {
     state: '',
     notes: ''
   });
+  
+  // Widget toggle state
+  const [isWidgetOpen, setIsWidgetOpen] = useState(false);
 
   const addMessage = (type, text, options = null, productLinks = null) => {
     const newMessage = {
@@ -710,13 +713,8 @@ const StorflexAssistant = () => {
         ]
       },
       identify: {
-        text: "I can help identify components.",
-        options: [
-          { id: 'shelf', label: 'Shelf or bracket' },
-          { id: 'upright', label: 'Upright or post' },
-          { id: 'base', label: 'Base or foot' },
-          { id: 'other_part', label: 'Other component' }
-        ]
+        text: "I'll help you identify the component! Please describe what you're looking at. For example:\n\n• What does it look like? (shelf, bracket, post, corner piece, etc.)\n• What part of the fixture is it on? (top, bottom, side, corner)\n• Any visible markings or features?\n\nJust type your description below.",
+        options: null // Will use text input instead
       },
       troubleshoot: {
         text: "What issue are you experiencing?",
@@ -730,12 +728,283 @@ const StorflexAssistant = () => {
     };
     
     const response = responses[supportId];
-    addMessage('user', response.text);
+    addMessage('user', supportId === 'assembly' ? 'Assembly instructions' : supportId === 'parts' ? 'Missing or replacement parts' : supportId === 'identify' ? 'Identify a component' : 'Troubleshooting');
     setConversationState(prev => ({ ...prev, supportType: supportId }));
     
     setTimeout(() => {
       addMessage('bot', response.text, response.options);
     }, 500);
+  };
+
+  // Enhanced component identification using keyword matching with clarification
+  const identifyComponent = (description) => {
+    const desc = description.toLowerCase();
+    const matches = [];
+    
+    // Component keyword mappings with catalog references
+    const componentKeywords = {
+      // Shelves
+      shelf: {
+        keywords: ['shelf', 'shelve', 'shelving', 'board', 'deck', 'surface'],
+        needsClarification: ['gondola', 'wall', 'wire', 'wood', 'particle board'],
+        products: ['gondola', 'wall', 'widespan', 'clearspan'],
+        info: 'Shelves/Decking',
+        details: 'These are the horizontal surfaces that hold your products. Available in various depths and finishes (steel, particle board, wire).',
+        catalogRef: 'Sections 1-10, Shelves & Accessories',
+        clarificationQuestion: 'To help identify the right shelf, can you tell me:\n\n• What type of fixture is it for? (gondola, wall unit, end cap)\n• What material is it? (steel, wood, particle board, wire)\n• Approximate size or depth?'
+      },
+      // Brackets - COMPREHENSIVE (covers all fixture types)
+      bracket: {
+        keywords: ['bracket', 'arm', 'support', 'holder', 'clip', 'cantilever'],
+        needsClarification: ['gondola', 'wall', 'end cap', 'wire', 'widespan', 'clearspan', 'corner', 'wood', 'pharmacy'],
+        products: ['gondola', 'wall', 'widespan', 'clearspan', 'endUnit', 'gondolaAccessories'],
+        info: 'Shelf Brackets',
+        details: 'Brackets hold shelves in place and vary significantly by fixture type. Each system uses different bracket designs.',
+        catalogRef: 'Various sections based on fixture type',
+        clarificationQuestion: 'Brackets vary greatly by fixture type. Please tell me:\n\n**What type of fixture?**\n• Gondola (center aisle, double-sided)\n• Wall unit (single-sided, wall-mounted)\n• Widespan (heavy-duty, warehouse)\n• Clearspan (particle board shelves)\n• End cap/End unit\n• Corner unit\n• Other specialty fixture\n\n**Bracket style (if known):**\n• Standard shelf bracket\n• Wire shelf bracket\n• Cantilever bracket\n• Faceout/waterfall bracket\n• Angled/slant bracket',
+        specificTypes: {
+          gondola: {
+            name: 'Gondola Shelf Brackets',
+            details: 'Standard gondola brackets lock into upright slots on 1" centers. Available in various depths (12", 16", 18", 24") with front lip.',
+            catalogRef: 'Section 1-7, Gondola Accessories',
+            products: ['gondola', 'gondolaAccessories']
+          },
+          wall: {
+            name: 'Wall Unit Brackets',
+            details: 'Wall-mounted brackets attach to standards. Common types: standard shelf brackets, wood shelf brackets, glass shelf brackets.',
+            catalogRef: 'Section 8-10, Wall Unit Components',
+            products: ['wall']
+          },
+          widespan: {
+            name: 'Widespan Brackets/Beams',
+            details: 'Heavy-duty beam brackets for widespan systems. Designed for higher load capacity with reinforced construction.',
+            catalogRef: 'Section 11, Widespan Components',
+            products: ['widespan']
+          },
+          clearspan: {
+            name: 'Clearspan Brackets',
+            details: 'Brackets specifically designed for particle board decking in warehouse/backroom applications.',
+            catalogRef: 'Clearspan Components',
+            products: ['clearspan']
+          },
+          endcap: {
+            name: 'End Cap Brackets',
+            details: 'Specialized brackets for end unit displays. May include angled or straight configurations.',
+            catalogRef: 'Section 2, End Cap Components',
+            products: ['endUnit']
+          },
+          wire: {
+            name: 'Wire Shelf Brackets',
+            details: 'Brackets designed to hold wire decking/shelving. Include hooks or clips for wire shelf attachment.',
+            catalogRef: 'Gondola & Wall Accessories',
+            products: ['gondola', 'wall', 'gondolaAccessories']
+          },
+          faceout: {
+            name: 'Faceout/Waterfall Brackets',
+            details: 'Display brackets for hanging merchandise. Commonly used in apparel and soft goods retail.',
+            catalogRef: 'Gondola Accessories',
+            products: ['gondolaAccessories']
+          },
+          slant: {
+            name: 'Slant/Angled Brackets',
+            details: 'Brackets that angle shelves for better product visibility. Common in convenience stores and pharmacy.',
+            catalogRef: 'Specialty Brackets',
+            products: ['gondolaAccessories', 'rxPharmacy']
+          }
+        }
+      },
+      // Uprights/Posts
+      upright: {
+        keywords: ['upright', 'post', 'column', 'vertical', 'pole', 'standard'],
+        needsClarification: ['gondola', 'wall', 'height', 'double-sided', 'single-sided'],
+        products: ['gondola', 'wall'],
+        info: 'Uprights/Standards',
+        details: 'The vertical posts that form the frame. They have slots or holes every inch for bracket adjustment.',
+        catalogRef: 'Sections 1-8, Uprights & Standards',
+        clarificationQuestion: 'Uprights come in different configurations. Can you tell me:\n\n• Is this for gondola (center aisle) or wall mounting?\n• Is it double-sided or single-sided?\n• What height? (common: 54", 60", 72", 84")'
+      },
+      // Base
+      base: {
+        keywords: ['base', 'foot', 'feet', 'bottom', 'floor', 'shoe'],
+        needsClarification: ['gondola', 'wall', 'adjustable'],
+        products: ['gondola'],
+        info: 'Base Shoes/Feet',
+        details: 'These connect to the bottom of uprights and provide stability. Often have leveling features.',
+        catalogRef: 'Gondola Base Components',
+        clarificationQuestion: 'Base components vary by fixture. Can you tell me:\n\n• Is this for gondola or wall unit?\n• Does it have leveling screws?\n• Is it attached to the floor or freestanding?'
+      },
+      // End caps
+      endcap: {
+        keywords: ['end cap', 'endcap', 'end', 'cap', 'cover', 'closing'],
+        needsClarification: ['gondola', 'flat', 'angled'],
+        products: ['gondola', 'endUnit'],
+        info: 'End Caps/End Units',
+        details: 'Components that finish the end of a gondola run or create display areas at aisle ends.',
+        catalogRef: 'Section 2, End Caps & End Units',
+        clarificationQuestion: 'End caps come in different styles. Can you tell me:\n\n• Is this a flat end cap or angled display?\n• Is it at the end of a gondola run?\n• Does it have shelving or is it decorative?'
+      },
+      // Corners
+      corner: {
+        keywords: ['corner', 'angle', 'turn', 'l-shape'],
+        needsClarification: ['inside', 'outside', 'box'],
+        products: ['insideCorner', 'boxCorner'],
+        info: 'Corner Units',
+        details: 'Special units designed to utilize corner spaces effectively.',
+        catalogRef: 'Corner Solutions section',
+        clarificationQuestion: 'Corner units come in different types. Can you tell me:\n\n• Is this an inside corner (90° angle) or box corner (enclosed)?\n• What angle - 90° or other?\n• Is it part of a gondola run or standalone?'
+      },
+      // Backs/Panels
+      back: {
+        keywords: ['back', 'panel', 'backing', 'rear', 'pegboard', 'slatwall'],
+        needsClarification: ['pegboard', 'slatwall', 'solid', 'wall', 'gondola'],
+        products: ['gondola', 'wall'],
+        info: 'Back Panels',
+        details: 'Vertical panels that close the back of wall units or provide hanging surfaces (pegboard/slatwall).',
+        catalogRef: 'Wall Unit components & Gondola backs',
+        clarificationQuestion: 'Back panels have different types. Can you tell me:\n\n• Is it pegboard, slatwall, or solid?\n• Is it for wall units or gondola?\n• Does it have holes/slots or is it flat?'
+      },
+      // Dividers
+      divider: {
+        keywords: ['divider', 'fence', 'separator', 'partition'],
+        needsClarification: ['wire', 'solid', 'height'],
+        products: ['gondolaAccessories'],
+        info: 'Shelf Dividers/Fences',
+        details: 'Accessories that separate products on shelves or prevent items from falling.',
+        catalogRef: 'Gondola Accessories',
+        clarificationQuestion: 'Dividers come in various styles. Can you tell me:\n\n• Is it wire or solid material?\n• Approximately how tall is it?\n• Does it attach to front or back of shelf?'
+      },
+      // Hooks/Pegs
+      hook: {
+        keywords: ['hook', 'peg', 'prong', 'hanger'],
+        needsClarification: ['pegboard', 'slatwall', 'wire', 'price'],
+        products: ['gondolaAccessories'],
+        info: 'Hooks & Pegboard Accessories',
+        details: 'Various hooks and pegs for hanging merchandise on pegboard or slatwall backs.',
+        catalogRef: 'Accessories section',
+        clarificationQuestion: 'Hooks vary by backing type. Can you tell me:\n\n• Is it for pegboard or slatwall?\n• Single prong or double?\n• Is it a price channel holder or merchandise hook?'
+      },
+      // Baskets
+      basket: {
+        keywords: ['basket', 'bin', 'container', 'wire'],
+        needsClarification: ['wire', 'plastic', 'size', 'mount'],
+        products: ['gondolaAccessories'],
+        info: 'Wire Baskets & Bins',
+        details: 'Wire or plastic containers that attach to shelving for bulk or loose items.',
+        catalogRef: 'Accessories section',
+        clarificationQuestion: 'Baskets vary in style and mounting. Can you tell me:\n\n• Is it wire or plastic?\n• Approximate size? (small, medium, large)\n• How does it attach? (clips on shelf, hooks on back?)'
+      }
+    };
+    
+    // Check for keyword matches
+    Object.keys(componentKeywords).forEach(componentType => {
+      const component = componentKeywords[componentType];
+      const hasMatch = component.keywords.some(keyword => desc.includes(keyword));
+      
+      if (hasMatch) {
+        // Check if we can identify a specific subtype (especially for brackets)
+        let specificMatch = null;
+        
+        if (component.specificTypes) {
+          // Check for specific bracket types
+          if (desc.includes('gondola')) specificMatch = component.specificTypes.gondola;
+          else if (desc.includes('wall')) specificMatch = component.specificTypes.wall;
+          else if (desc.includes('widespan') || desc.includes('heavy duty')) specificMatch = component.specificTypes.widespan;
+          else if (desc.includes('clearspan') || desc.includes('particle board')) specificMatch = component.specificTypes.clearspan;
+          else if (desc.includes('end cap') || desc.includes('endcap')) specificMatch = component.specificTypes.endcap;
+          else if (desc.includes('wire')) specificMatch = component.specificTypes.wire;
+          else if (desc.includes('faceout') || desc.includes('waterfall') || desc.includes('hanging')) specificMatch = component.specificTypes.faceout;
+          else if (desc.includes('slant') || desc.includes('angle') || desc.includes('tilt')) specificMatch = component.specificTypes.slant;
+        }
+        
+        matches.push({
+          type: specificMatch ? specificMatch.name : component.info,
+          details: specificMatch ? specificMatch.details : component.details,
+          catalogRef: specificMatch ? specificMatch.catalogRef : component.catalogRef,
+          clarificationQuestion: component.clarificationQuestion,
+          needsClarification: component.needsClarification,
+          products: specificMatch ? 
+            specificMatch.products.map(key => PRODUCT_CATALOG[key]).filter(Boolean) : 
+            component.products.map(key => PRODUCT_CATALOG[key]).filter(Boolean),
+          hasSpecificMatch: !!specificMatch
+        });
+      }
+    });
+    
+    // Check if description is too vague (needs clarification)
+    if (matches.length > 0) {
+      const match = matches[0];
+      
+      // Check if we found a specific subtype (like "gondola bracket") - skip clarification
+      if (match.hasSpecificMatch) {
+        let responseText = `Based on your description, this sounds like:\n\n**${match.type}**\n\n${match.details}\n\n📖 **Catalog Reference:** ${match.catalogRef}`;
+        
+        addMessage('bot', responseText, null, match.products.slice(0, 2));
+        
+        setTimeout(() => {
+          addMessage('bot', "Does this match what you're looking for?", [
+            { id: 'yes_match', label: 'Yes, that\'s it!' },
+            { id: 'not_quite', label: 'Not quite, let me clarify' },
+            { id: 'contact_support', label: 'Contact support for confirmation' }
+          ]);
+        }, 1000);
+        
+        return true;
+      }
+      
+      // Check if we have enough general specifics to avoid clarification
+      const hasSpecifics = match.needsClarification.some(term => desc.includes(term));
+      
+      // If description is too vague (just "bracket" without context)
+      if (!hasSpecifics && desc.split(' ').length <= 3) {
+        addMessage('bot', `I found a potential match - **${match.type}**.\n\nTo make sure I identify the right component, I need a bit more detail:\n\n${match.clarificationQuestion}`, [
+          { id: 'provide_detail', label: 'I\'ll provide more details' },
+          { id: 'skip_to_contact', label: 'Just connect me with support' }
+        ]);
+        return true;
+      }
+      
+      // If we have enough detail, provide identification
+      let responseText = `Based on your description, this sounds like:\n\n**${match.type}**\n\n${match.details}\n\n📖 **Catalog Reference:** ${match.catalogRef}`;
+      
+      addMessage('bot', responseText, null, match.products.slice(0, 2));
+      
+      setTimeout(() => {
+        addMessage('bot', "Does this match what you're looking for?", [
+          { id: 'yes_match', label: 'Yes, that\'s it!' },
+          { id: 'not_quite', label: 'Not quite, let me clarify' },
+          { id: 'contact_support', label: 'Contact support for confirmation' }
+        ]);
+      }, 1000);
+      
+      return true;
+    } else {
+      // No match found
+      addMessage('bot', "I couldn't identify that specific component from your description. Let me connect you with our support team who can help:\n\n📞 **Phone:** (800) 869-2040\n📧 **Email:** customerservice@storflex.com\n\nThey can identify parts from photos or detailed descriptions.", [
+        { id: 'describe_again', label: 'Try describing it differently' },
+        { id: 'contact_support', label: 'Contact support' }
+      ]);
+      
+      return false;
+    }
+  };
+
+  const handleComponentIdentification = (optionId) => {
+    if (optionId === 'more_info' || optionId === 'yes_match') {
+      addMessage('user', 'See product details');
+      setTimeout(() => {
+        addMessage('bot', "Here's our complete product catalog where you can find replacement parts:", null, [PRODUCT_CATALOG.allProducts]);
+        setTimeout(() => {
+          addMessage('bot', "Need to order parts or have questions?\n\n📞 Call: (800) 869-2040\n📧 Email: customerservice@storflex.com");
+        }, 1000);
+      }, 500);
+    } else if (optionId === 'describe_again' || optionId === 'provide_detail' || optionId === 'not_quite') {
+      addMessage('user', 'Provide more details');
+      setTimeout(() => {
+        addMessage('bot', "No problem! Please describe the component with as much detail as possible:\n\n• Type of fixture (gondola, wall, end cap, etc.)\n• Material and color\n• Size or measurements\n• Where it's located on the fixture\n• Any numbers or markings");
+      }, 500);
+    } else if (optionId === 'contact_support' || optionId === 'skip_to_contact') {
+      handleSupportContact();
+    }
   };
 
   const handleSupportContact = () => {
@@ -943,6 +1212,11 @@ const StorflexAssistant = () => {
     } else if (state.mode === 'support') {
       if (!state.supportType) {
         handleSupportRequest(optionId);
+      } else if (optionId === 'more_info' || optionId === 'describe_again' || optionId === 'contact_support' || 
+                 optionId === 'provide_detail' || optionId === 'yes_match' || optionId === 'not_quite' || 
+                 optionId === 'skip_to_contact') {
+        // Handle component identification follow-up actions
+        handleComponentIdentification(optionId);
       } else {
         handleSupportContact();
       }
@@ -990,8 +1264,12 @@ const StorflexAssistant = () => {
     if (inputValue.trim()) {
       addMessage('user', inputValue);
       
+      // If in identify support mode, analyze for component identification
+      if (conversationState.mode === 'support' && conversationState.supportType === 'identify') {
+        identifyComponent(inputValue);
+      }
       // If in custom mode, analyze the message for keywords
-      if (conversationState.mode === 'custom') {
+      else if (conversationState.mode === 'custom') {
         analyzeCustomRequest(inputValue);
       } else {
         // Default response for other modes
@@ -1003,24 +1281,62 @@ const StorflexAssistant = () => {
   };
 
   return (
-    <div 
-      className="flex flex-col min-h-screen w-full bg-gradient-to-br from-blue-50 to-gray-50"
-      style={{ height: '100vh', minHeight: '-webkit-fill-available' }}
-    >
-      {/* Header - Responsive */}
-      <div className="bg-blue-600 text-white p-3 sm:p-4 shadow-lg flex-shrink-0">
-        <div className="flex items-center gap-2 sm:gap-3 max-w-4xl mx-auto">
-          <Package className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0" />
-          <div className="min-w-0">
-            <h1 className="text-base sm:text-xl font-bold truncate">Storflex Assistant</h1>
-            <p className="text-xs sm:text-sm text-blue-100 truncate">Product Finder & Quote Generator</p>
+    <>
+      {/* Floating Launcher Button - Only visible when widget is closed */}
+      {!isWidgetOpen && (
+        <button
+          onClick={() => setIsWidgetOpen(true)}
+          className="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-50 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-4 shadow-2xl transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-4 focus:ring-blue-300"
+          aria-label="Open Storflex Assistant"
+        >
+          <div className="relative">
+            <Package className="w-6 h-6" />
+            {/* Online indicator */}
+            <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white"></span>
           </div>
-        </div>
-      </div>
+        </button>
+      )}
 
-      {/* Messages - Responsive */}
-      <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4">
-        <div className="max-w-4xl mx-auto space-y-3 sm:space-y-4">
+      {/* Main Chat Widget - Only visible when open */}
+      {isWidgetOpen && (
+        <>
+          {/* Backdrop for mobile */}
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-30 z-30 sm:hidden"
+            onClick={() => setIsWidgetOpen(false)}
+            aria-hidden="true"
+          />
+          
+          {/* Widget Container */}
+          <div 
+            className="fixed bottom-0 right-0 left-0 sm:left-auto sm:bottom-6 sm:right-6 w-full sm:w-[440px] h-[85vh] sm:h-[700px] flex flex-col bg-white shadow-2xl rounded-t-2xl sm:rounded-2xl z-40 transition-all duration-300"
+            style={{ maxHeight: '100vh' }}
+          >
+          {/* Header with Close Button */}
+          <div className="bg-blue-600 text-white p-3 sm:p-4 shadow-lg flex-shrink-0 rounded-t-2xl">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <Package className="w-6 h-6 sm:w-7 sm:h-7 flex-shrink-0" />
+                <div className="min-w-0">
+                  <h1 className="text-base sm:text-lg font-bold">Storflex Assistant</h1>
+                  <p className="text-xs text-blue-100">Product Finder & Quote Generator</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsWidgetOpen(false)}
+                className="p-2 hover:bg-blue-700 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-white"
+                aria-label="Close chat"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* Messages Area */}
+          <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4 bg-gradient-to-br from-blue-50 to-gray-50">
+            <div className="max-w-4xl mx-auto space-y-3 sm:space-y-4">
           {messages.map((message, index) => (
             <div
               key={index}
@@ -1172,7 +1488,7 @@ const StorflexAssistant = () => {
       {/* Footer - Responsive */}
       {!showLeadForm && (
         <div className="border-t border-gray-200 p-3 sm:p-4 bg-white flex-shrink-0">
-          <div className="max-w-4xl mx-auto">
+          <div className="mx-auto">
             <form onSubmit={handleTextSubmit} className="flex gap-2">
               <input
                 type="text"
@@ -1194,7 +1510,10 @@ const StorflexAssistant = () => {
           </div>
         </div>
       )}
-    </div>
+          </div>
+        </>
+      )}
+    </>
   );
 };
 
