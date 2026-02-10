@@ -3166,20 +3166,84 @@ const StorflexAssistant = () => {
               </button>
             </div>
           </div>
+          
+          {/* Progress Indicator - Only show in sales flow */}
+          {conversationState.mode === 'sales' && !showLeadForm && (() => {
+            const getCurrentStep = () => {
+              if (!conversationState.businessType) return 1;
+              if (!conversationState.location) return 2;
+              if ((conversationState.location === 'cooler' || conversationState.location === 'freezer' || conversationState.location === 'both_cf') && !conversationState.timeline) return 3;
+              if (!conversationState.items && !conversationState.displayType) return 3;
+              if (conversationState.location === 'checkout' && !conversationState.sectionCount) return 4;
+              if (!conversationState.spaceInfo) return 4;
+              if (!conversationState.timeline) return 5;
+              return 6;
+            };
+            
+            const getStepLabels = () => {
+              const location = conversationState.location;
+              if (location === 'cooler' || location === 'freezer' || location === 'both_cf') {
+                return ['Business', 'Location', 'Timeline', 'Quote'];
+              } else if (location === 'checkout') {
+                return ['Business', 'Location', 'Items', 'Sections', 'Quote'];
+              } else {
+                return ['Business', 'Location', 'Details', 'Space', 'Timeline', 'Quote'];
+              }
+            };
+            
+            const currentStep = getCurrentStep();
+            const stepLabels = getStepLabels();
+            
+            return (
+              <div className="bg-white border-b border-gray-200 px-4 py-3">
+                <div className="flex items-center justify-between">
+                  {stepLabels.map((label, index) => {
+                    const stepNumber = index + 1;
+                    const isCompleted = stepNumber < currentStep;
+                    const isCurrent = stepNumber === currentStep;
+                    
+                    return (
+                      <div key={index} className="flex-1 flex items-center">
+                        <div className="flex flex-col items-center flex-1">
+                          <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-semibold transition-all duration-300 ${
+                            isCompleted ? 'bg-green-500 text-white' : 
+                            isCurrent ? 'bg-blue-600 text-white ring-2 sm:ring-4 ring-blue-200' : 
+                            'bg-gray-200 text-gray-500'
+                          }`}>
+                            {isCompleted ? '✓' : stepNumber}
+                          </div>
+                          <span className={`text-[10px] sm:text-xs mt-1 text-center font-medium hidden sm:block ${
+                            isCurrent ? 'text-blue-600' : 'text-gray-500'
+                          }`}>
+                            {label}
+                          </span>
+                        </div>
+                        {index < stepLabels.length - 1 && (
+                          <div className={`flex-1 h-0.5 sm:h-1 mx-0.5 sm:mx-1 rounded transition-all duration-300 ${
+                            isCompleted ? 'bg-green-500' : 'bg-gray-200'
+                          }`} />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Messages Area */}
-          <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4 bg-gradient-to-br from-blue-50 to-gray-50">
-            <div className="max-w-4xl mx-auto space-y-3 sm:space-y-4">
+          <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-4 sm:space-y-5 bg-gradient-to-br from-blue-50 to-gray-50">
+            <div className="max-w-4xl mx-auto space-y-4 sm:space-y-5">
           {messages.map((message, index) => (
             <div
               key={index}
               className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               <div
-                className={`max-w-[85%] sm:max-w-[80%] rounded-2xl p-3 sm:p-4 ${
+                className={`max-w-[85%] sm:max-w-[80%] rounded-2xl p-3.5 sm:p-4 ${
                   message.type === 'user'
-                    ? 'bg-blue-600 text-white text-sm sm:text-base'
-                    : 'bg-white text-gray-900 shadow-md border border-gray-200 text-sm sm:text-base'
+                    ? 'bg-blue-600 text-white text-sm sm:text-base shadow-md'
+                    : 'bg-white text-gray-900 shadow-lg border border-gray-100 text-sm sm:text-base'
                 }`}
               >
                 {message.text && (
@@ -3222,10 +3286,10 @@ const StorflexAssistant = () => {
                       <button
                         key={option.id}
                         onClick={() => handleOptionClick(index, option.id)}
-                        className={`w-full text-left px-3 py-2.5 sm:px-4 sm:py-3 border rounded-lg transition-all flex items-center gap-2 group text-sm sm:text-base text-gray-900 touch-manipulation ${
+                        className={`w-full text-left px-3.5 py-3 sm:px-4 sm:py-3.5 border-2 rounded-xl transition-all duration-200 flex items-center gap-2.5 group text-sm sm:text-base font-medium touch-manipulation ${
                           isCurrentQuestion 
-                            ? 'bg-gray-50 hover:bg-blue-50 active:bg-blue-100 border-gray-300' 
-                            : 'bg-gray-100 hover:bg-gray-200 active:bg-gray-300 border-gray-400 opacity-75'
+                            ? 'bg-white hover:bg-blue-50 active:bg-blue-100 border-blue-200 hover:border-blue-400 text-gray-900 hover:shadow-md' 
+                            : 'bg-gray-50 hover:bg-gray-100 active:bg-gray-200 border-gray-300 text-gray-700 opacity-80 hover:opacity-100'
                         }`}
                         title={isPreviousQuestion ? "Click to change this answer" : ""}
                       >
