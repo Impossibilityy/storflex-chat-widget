@@ -202,6 +202,12 @@ const StorflexAssistant = () => {
           { id: 'troubleshoot', label: 'Troubleshooting' }
         ]);
       }, 500);
+    } else if (intentId === 'E') {
+      // Custom flow for "Something else"
+      setConversationState(prev => ({ ...prev, mode: 'custom', intent: intentId }));
+      setTimeout(() => {
+        addMessage('bot', "I'd love to help! Please describe what you're looking for, and I'll do my best to point you in the right direction.\n\n(For example: displays, storage solutions, specific fixtures, accessories, etc.)");
+      }, 500);
     } else {
       setConversationState(prev => ({ ...prev, mode: 'sales', intent: intentId }));
       setTimeout(() => {
@@ -218,6 +224,119 @@ const StorflexAssistant = () => {
             { id: 'warehouse', label: 'Warehouse/Distribution' }
           ]);
         }, 500);
+      }, 500);
+    }
+  };
+
+  // Keyword detection and smart recommendation system
+  const analyzeCustomRequest = (userMessage) => {
+    const message = userMessage.toLowerCase();
+    const recommendations = [];
+    
+    // Keyword mappings to products
+    const keywordMap = {
+      // Display types
+      display: ['gondola', 'wall', 'endUnit', 'fourSided'],
+      displays: ['gondola', 'wall', 'endUnit', 'fourSided'],
+      shelving: ['gondola', 'wall', 'widespan', 'clearspan'],
+      shelves: ['gondola', 'wall', 'widespan', 'clearspan'],
+      shelf: ['gondola', 'wall', 'widespan'],
+      
+      // Specific products
+      gondola: ['gondola', 'gondolaAccessories'],
+      wall: ['wall'],
+      'end cap': ['endUnit'],
+      endcap: ['endUnit'],
+      corner: ['insideCorner', 'boxCorner'],
+      checkout: ['merchandisingCounter'],
+      counter: ['merchandisingCounter'],
+      
+      // Heavy duty / warehouse
+      heavy: ['widespan', 'clearspan'],
+      warehouse: ['widespan', 'clearspan'],
+      storage: ['widespan', 'clearspan'],
+      backroom: ['clearspan'],
+      
+      // Refrigeration
+      cooler: ['cooler'],
+      freezer: ['cooler'],
+      refrigeration: ['cooler'],
+      'walk-in': ['cooler'],
+      
+      // Materials
+      wood: ['woodDisplays'],
+      wooden: ['woodDisplays'],
+      
+      // Specific industries
+      pharmacy: ['rxPharmacy'],
+      
+      // Accessories
+      accessories: ['gondolaAccessories', 'retailShelves'],
+      parts: ['gondolaAccessories'],
+      hooks: ['gondolaAccessories'],
+      baskets: ['gondolaAccessories'],
+      
+      // General retail
+      retail: ['gondola', 'wall', 'endUnit'],
+      store: ['gondola', 'wall', 'endUnit'],
+      fixtures: ['gondola', 'wall', 'merchandisingCounter'],
+      
+      // Mobile/portable
+      mobile: ['fourSided'],
+      portable: ['fourSided'],
+      movable: ['fourSided']
+    };
+    
+    // Check for keywords in the message
+    const foundProducts = new Set();
+    
+    Object.keys(keywordMap).forEach(keyword => {
+      if (message.includes(keyword)) {
+        keywordMap[keyword].forEach(product => foundProducts.add(product));
+      }
+    });
+    
+    // If we found matching products, recommend them
+    if (foundProducts.size > 0) {
+      const productLinks = Array.from(foundProducts)
+        .slice(0, 3) // Limit to top 3 matches
+        .map(productKey => PRODUCT_CATALOG[productKey]);
+      
+      let responseText = "Based on what you described, here are some products that might work for you:\n\n";
+      
+      addMessage('bot', responseText, null, productLinks);
+      
+      setTimeout(() => {
+        addMessage('bot', "Would you like more information, or should I connect you with a specialist?", [
+          { id: 'browse_all', label: 'Browse all products' },
+          { id: 'quote_custom', label: 'Get a custom quote' },
+          { id: 'call_custom', label: 'Speak with a specialist' }
+        ]);
+      }, 1000);
+      
+      return true;
+    }
+    
+    // No keywords matched - provide general help
+    addMessage('bot', "I want to make sure I understand correctly. Are you looking for:\n\n• Store fixtures and displays?\n• Shelving systems?\n• Refrigeration equipment?\n• Something else entirely?\n\nFeel free to describe it in more detail, or I can connect you directly with a specialist who can help!", [
+      { id: 'browse_all', label: 'Browse all products' },
+      { id: 'call_custom', label: 'Speak with a specialist' }
+    ]);
+    
+    return false;
+  };
+
+  const handleCustomResponse = (optionId) => {
+    if (optionId === 'browse_all') {
+      addMessage('user', 'Browse all products');
+      setTimeout(() => {
+        addMessage('bot', "Here's our complete product catalog:", null, [PRODUCT_CATALOG.allProducts]);
+      }, 500);
+    } else if (optionId === 'quote_custom' || optionId === 'call_custom') {
+      addMessage('user', optionId === 'quote_custom' ? 'Get a custom quote' : 'Speak with a specialist');
+      setTimeout(() => {
+        addMessage('bot', "Perfect! Let me collect your information so we can help you.\n\nWhat's the best way to reach you?");
+        setShowLeadForm(true);
       }, 500);
     }
   };
@@ -725,7 +844,9 @@ const StorflexAssistant = () => {
       const message = messages[messageIndex];
       let newState = { ...conversationState };
       
+      // CRITICAL: Reset all state that comes AFTER this question
       if (message.text?.includes("What are you working on today")) {
+        // First question - reset EVERYTHING as if starting fresh
         newState = {
           mode: null,
           intent: null,
@@ -741,6 +862,7 @@ const StorflexAssistant = () => {
           leadData: {}
         };
       } else if (message.text?.includes("What type of business")) {
+        // Business type question - keep mode/intent, reset everything else
         newState.businessType = null;
         newState.location = null;
         newState.items = null;
@@ -750,6 +872,7 @@ const StorflexAssistant = () => {
         newState.sectionCount = null;
         newState.timeline = null;
       } else if (message.text?.includes("Where will the shelving be located") || message.text?.includes("What type of refrigeration")) {
+        // Location question - keep business type, reset location and everything after
         newState.location = null;
         newState.items = null;
         newState.displayType = null;
@@ -758,6 +881,7 @@ const StorflexAssistant = () => {
         newState.sectionCount = null;
         newState.timeline = null;
       } else if (message.text?.includes("What will you be displaying")) {
+        // Items question - reset items and everything after
         newState.items = null;
         newState.displayType = null;
         newState.adjustability = null;
@@ -765,21 +889,29 @@ const StorflexAssistant = () => {
         newState.sectionCount = null;
         newState.timeline = null;
       } else if (message.text?.includes("end cap display") || message.text?.includes("corner solution") || message.text?.includes("at checkout")) {
+        // Display type question - reset display type and everything after
         newState.displayType = null;
+        newState.adjustability = null;
+        newState.spaceInfo = null;
+        newState.sectionCount = null;
         newState.timeline = null;
       } else if (message.text?.includes("adjustable shelves")) {
+        // Adjustability question - reset adjustability and everything after
         newState.adjustability = null;
         newState.spaceInfo = null;
         newState.sectionCount = null;
         newState.timeline = null;
       } else if (message.text?.includes("describe your space")) {
+        // Space info question - reset space info and everything after
         newState.spaceInfo = null;
         newState.sectionCount = null;
         newState.timeline = null;
       } else if (message.text?.includes("How many sections")) {
+        // Section count question - reset section count and timeline
         newState.sectionCount = null;
         newState.timeline = null;
-      } else if (message.text?.includes("timeline")) {
+      } else if (message.text?.includes("timeline") || message.text?.includes("What's your timeline")) {
+        // Timeline question - reset only timeline
         newState.timeline = null;
       }
       
@@ -787,6 +919,7 @@ const StorflexAssistant = () => {
       setConversationState(newState);
       
       // Process with the new reset state after a delay
+      // This will trigger the conversation to continue naturally from this point
       setTimeout(() => {
         processOptionSelectionWithState(optionId, newState);
       }, 100);
@@ -801,6 +934,9 @@ const StorflexAssistant = () => {
     // Process selection with explicit state (used after reset)
     if (!state.mode) {
       handleIntentSelection(optionId);
+    } else if (state.mode === 'custom') {
+      // Handle custom "Something else" flow
+      handleCustomResponse(optionId);
     } else if (state.mode === 'support') {
       if (!state.supportType) {
         handleSupportRequest(optionId);
@@ -824,6 +960,9 @@ const StorflexAssistant = () => {
         }
       } else if (state.displayType && !state.timeline) {
         handleTimeline(optionId);
+      } else if (state.timeline && (optionId === 'yes' || optionId === 'no' || optionId === 'browse')) {
+        // After recommendation is shown, handle quote request
+        handleQuoteRequest(optionId);
       } else if (!state.adjustability) {
         handleAdjustability(optionId);
       } else if (!state.spaceInfo) {
@@ -847,7 +986,15 @@ const StorflexAssistant = () => {
     e.preventDefault();
     if (inputValue.trim()) {
       addMessage('user', inputValue);
-      addMessage('bot', "Thanks! Contact us:\n\n(800) 869-2040\ncustomerservice@storflex.com");
+      
+      // If in custom mode, analyze the message for keywords
+      if (conversationState.mode === 'custom') {
+        analyzeCustomRequest(inputValue);
+      } else {
+        // Default response for other modes
+        addMessage('bot', "Thanks! Contact us:\n\n(800) 869-2040\ncustomerservice@storflex.com");
+      }
+      
       setInputValue('');
     }
   };
