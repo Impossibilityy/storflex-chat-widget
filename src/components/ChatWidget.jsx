@@ -218,7 +218,10 @@ const StorflexAssistant = () => {
     sectionCount: null,
     timeline: null,
     supportType: null,
-    leadData: {}
+    leadData: {},
+    uncertaintyCount: 0, // Track "not sure" answers for adaptive handoff
+    skippedQuestions: [], // Track which questions were intelligently skipped
+    confidenceFactors: {} // Track factors for confidence scoring
   });
   
   const [inputValue, setInputValue] = useState('');
@@ -467,42 +470,104 @@ const StorflexAssistant = () => {
     };
     
     addMessage('user', labels[locationId]);
-    setConversationState(prev => ({ ...prev, location: locationId }));
+    
+    // Track uncertainty
+    let newUncertaintyCount = conversationState.uncertaintyCount;
+    if (locationId === 'not_sure') {
+      newUncertaintyCount++;
+    }
+    
+    setConversationState(prev => ({ 
+      ...prev, 
+      location: locationId,
+      uncertaintyCount: newUncertaintyCount
+    }));
     
     setTimeout(() => {
+      // ADAPTIVE: Fast-track to human if too much uncertainty
+      if (newUncertaintyCount >= 2) {
+        addMessage('bot', "I notice you're exploring different options. Let me connect you with a specialist who can better understand your needs:\n\n**Would you like to speak with someone directly?**", [
+          { id: 'yes_connect', label: 'Yes, connect me with specialist' },
+          { id: 'continue_chatbot', label: 'No, continue with questions' }
+        ]);
+        return;
+      }
+      
+      // ADAPTIVE: Cooler/freezer has unique requirements - skip standard retail questions
       if (locationId === 'cooler' || locationId === 'freezer' || locationId === 'both_cf') {
+        setConversationState(prev => ({ 
+          ...prev, 
+          skippedQuestions: [...prev.skippedQuestions, 'items', 'displayType', 'adjustability', 'spaceInfo']
+        }));
         skipToTimeline();
         return;
       }
       
+      // ADAPTIVE: Wall-only skips aisle-specific questions
+      if (locationId === 'wall') {
+        addMessage('bot', "For wall perimeter shelving, what **product type** will you display?", [
+          { id: 'packaged', label: 'Packaged goods (cans, boxes)' },
+          { id: 'hanging', label: 'Hanging merchandise' },
+          { id: 'mixed', label: 'Mix of products' },
+          { id: 'pharmacy_items', label: 'Pharmacy/Rx items' }
+        ]);
+        // Note: Wall-only doesn't need aisle width questions
+        setConversationState(prev => ({ 
+          ...prev, 
+          skippedQuestions: [...prev.skippedQuestions, 'aisleWidth']
+        }));
+        return;
+      }
+      
+      // ADAPTIVE: Endcaps/corners are specialty - go straight to display type
       if (locationId === 'endcaps') {
         addMessage('bot', "What type of end cap display interests you?", [
           { id: 'standard_end', label: 'Standard end units' },
           { id: 'promotional', label: 'Promotional / Seasonal displays' },
           { id: 'both_ends', label: 'Both options' }
         ]);
-      } else if (locationId === 'corners') {
+        return;
+      } 
+      
+      if (locationId === 'corners') {
         addMessage('bot', "What type of corner solution do you need?", [
-          { id: 'inside_corner', label: 'Inside corner (dramatic transition)' },
+          { id: 'inside_corner', label: 'Inside corner (90° transition)' },
           { id: 'box_corner', label: 'Box corner (eliminate dead space)' },
           { id: 'not_sure_corner', label: 'Not sure - need advice' }
         ]);
-      } else if (locationId === 'checkout') {
+        return;
+      } 
+      
+      // ADAPTIVE: Checkout is impulse/small footprint - different questions
+      if (locationId === 'checkout') {
         addMessage('bot', "What are you looking for at checkout?", [
           { id: 'counter_system', label: 'Merchandising counter system' },
           { id: 'impulse_displays', label: 'Impulse / Four-sided displays' },
           { id: 'both_checkout', label: 'Both options' }
         ]);
-      } else {
-        addMessage('bot', "What will you be displaying?", [
-          { id: 'packaged', label: 'Packaged goods (cans, boxes)' },
-          { id: 'bulk', label: 'Bulk items or cases' },
-          { id: 'mixed', label: 'Mix of products' },
-          { id: 'pharmacy_items', label: 'Pharmacy/Rx items' },
-          { id: 'hardware_items', label: 'Hardware/Tools' },
-          { id: 'specialty', label: 'Specialty/variable items' }
-        ]);
+        return;
       }
+      
+      // ADAPTIVE: Multiple areas needs more detail
+      if (locationId === 'multiple') {
+        addMessage('bot', "For multiple areas, which is your **primary focus** right now?", [
+          { id: 'aisles', label: 'Center aisles' },
+          { id: 'wall', label: 'Wall displays' },
+          { id: 'entire_store', label: 'Entire store layout' }
+        ]);
+        return;
+      }
+      
+      // Standard path for center aisles
+      addMessage('bot', "What will you be displaying?", [
+        { id: 'packaged', label: 'Packaged goods (cans, boxes)' },
+        { id: 'bulk', label: 'Bulk items or cases' },
+        { id: 'hanging', label: 'Hanging merchandise' },
+        { id: 'mixed', label: 'Mix of products' },
+        { id: 'pharmacy_items', label: 'Pharmacy/Rx items' },
+        { id: 'hardware_items', label: 'Hardware/Tools' },
+        { id: 'specialty', label: 'Specialty/variable items' }
+      ]);
     }, 500);
   };
 
@@ -532,9 +597,94 @@ const StorflexAssistant = () => {
       packaged: 'Packaged goods (cans, boxes)',
       bulk: 'Bulk items or cases',
       mixed: 'Mix of products',
+      hanging: 'Hanging merchandise',
       pharmacy_items: 'Pharmacy/Rx items',
       hardware_items: 'Hardware/Tools',
       specialty: 'Specialty/variable items'
+    };
+    
+    addMessage('user', labels[itemsId]);
+    
+    // Track uncertainty
+    let newUncertaintyCount = conversationState.uncertaintyCount;
+    if (itemsId === 'specialty' || itemsId === 'mixed') {
+      // These are less specific, slight uncertainty indicator
+    }
+    
+    setConversationState(prev => ({ 
+      ...prev, 
+      items: itemsId,
+      uncertaintyCount: newUncertaintyCount
+    }));
+    
+    setTimeout(() => {
+      // ADAPTIVE: Bulk/heavy items skip adjustability, ask about capacity
+      if (itemsId === 'bulk') {
+        addMessage('bot', "For bulk storage, I need to understand **capacity needs**:\n\nWill you need pallet-level access or forklift clearance?", [
+          { id: 'pallet_yes', label: 'Yes - pallet/forklift access needed' },
+          { id: 'pallet_no', label: 'No - hand-stocked only' },
+          { id: 'pallet_unsure', label: 'Not sure' }
+        ]);
+        setConversationState(prev => ({ 
+          ...prev, 
+          skippedQuestions: [...prev.skippedQuestions, 'adjustability']
+        }));
+        return;
+      }
+      
+      // ADAPTIVE: Hanging merchandise needs hook/arm questions, not shelf questions
+      if (itemsId === 'hanging') {
+        addMessage('bot', "For hanging merchandise, what **display type** works best?", [
+          { id: 'faceout', label: 'Faceout displays' },
+          { id: 'waterfall', label: 'Waterfall hooks' },
+          { id: 'straight_arm', label: 'Straight arms' },
+          { id: 'mixed_hanging', label: 'Mix of styles' }
+        ]);
+        setConversationState(prev => ({ 
+          ...prev, 
+          skippedQuestions: [...prev.skippedQuestions, 'adjustability']
+        }));
+        return;
+      }
+      
+      // ADAPTIVE: Pharmacy items go to specialized pharmacy fixtures
+      if (itemsId === 'pharmacy_items') {
+        addMessage('bot', "For pharmacy items, do you need **specialized Rx fixtures** or standard shelving?", [
+          { id: 'rx_specialized', label: 'Specialized Rx bay fixtures' },
+          { id: 'rx_standard', label: 'Standard shelving for OTC' },
+          { id: 'rx_both', label: 'Both Rx and OTC' }
+        ]);
+        setConversationState(prev => ({ 
+          ...prev, 
+          skippedQuestions: [...prev.skippedQuestions, 'adjustability']
+        }));
+        return;
+      }
+      
+      // ADAPTIVE: Hardware items often need pegboard/slatwall
+      if (itemsId === 'hardware_items') {
+        addMessage('bot', "Hardware displays often use **pegboard or slatwall**. What's your preference?", [
+          { id: 'pegboard_hw', label: 'Pegboard (traditional)' },
+          { id: 'slatwall_hw', label: 'Slatwall (modern)' },
+          { id: 'shelving_hw', label: 'Standard shelving' },
+          { id: 'mixed_hw', label: 'Combination' }
+        ]);
+        setConversationState(prev => ({ 
+          ...prev, 
+          skippedQuestions: [...prev.skippedQuestions, 'adjustability']
+        }));
+        return;
+      }
+      
+      // Standard path for packaged goods/mixed
+      addMessage('bot', "What type of display works best for your products?", [
+        { id: 'adjustable', label: 'Adjustable shelving (flexibility)' },
+        { id: 'fixed', label: 'Fixed shelving (economy)' },
+        { id: 'mixed_display', label: 'Mix of both' },
+        { id: 'not_sure_display', label: 'Not sure' }
+      ]);
+    }, 500);
+  };
     };
     
     addMessage('user', labels[itemsId]);
@@ -610,6 +760,169 @@ const StorflexAssistant = () => {
     setTimeout(() => {
       skipToTimeline();
     }, 500);
+  };
+
+  // NEW ADAPTIVE PATH HANDLERS
+  
+  const handlePalletAccess = (palletId) => {
+    const labels = {
+      pallet_yes: 'Yes - pallet/forklift access needed',
+      pallet_no: 'No - hand-stocked only',
+      pallet_unsure: 'Not sure'
+    };
+    
+    addMessage('user', labels[palletId]);
+    
+    // Track uncertainty
+    let newUncertaintyCount = conversationState.uncertaintyCount;
+    if (palletId === 'pallet_unsure') newUncertaintyCount++;
+    
+    setConversationState(prev => ({ 
+      ...prev, 
+      palletAccess: palletId,
+      uncertaintyCount: newUncertaintyCount,
+      confidenceFactors: { ...prev.confidenceFactors, hasPalletInfo: palletId !== 'pallet_unsure' }
+    }));
+    
+    setTimeout(() => {
+      if (palletId === 'pallet_yes') {
+        addMessage('bot', "For pallet-level storage, approximately **how many pallet positions** do you need?", [
+          { id: 'pallets_10', label: '5-10 positions' },
+          { id: 'pallets_25', label: '10-25 positions' },
+          { id: 'pallets_50', label: '25-50 positions' },
+          { id: 'pallets_more', label: '50+ positions' }
+        ]);
+      } else {
+        skipToTimeline();
+      }
+    }, 500);
+  };
+  
+  const handlePalletPositions = (positionsId) => {
+    const labels = {
+      pallets_10: '5-10 positions',
+      pallets_25: '10-25 positions',
+      pallets_50: '25-50 positions',
+      pallets_more: '50+ positions'
+    };
+    
+    addMessage('user', labels[positionsId]);
+    setConversationState(prev => ({ 
+      ...prev, 
+      palletPositions: positionsId,
+      confidenceFactors: { ...prev.confidenceFactors, hasQuantity: true }
+    }));
+    
+    setTimeout(() => {
+      skipToTimeline();
+    }, 500);
+  };
+  
+  const handleHangingDisplay = (hangingId) => {
+    const labels = {
+      faceout: 'Faceout displays',
+      waterfall: 'Waterfall hooks',
+      straight_arm: 'Straight arms',
+      mixed_hanging: 'Mix of styles'
+    };
+    
+    addMessage('user', labels[hangingId]);
+    setConversationState(prev => ({ 
+      ...prev, 
+      hangingDisplay: hangingId,
+      confidenceFactors: { ...prev.confidenceFactors, hasDisplayPreference: true }
+    }));
+    
+    setTimeout(() => {
+      addMessage('bot', "What's the approximate **linear footage** for hanging displays?", [
+        { id: 'hanging_12', label: '4-12 feet' },
+        { id: 'hanging_24', label: '12-24 feet' },
+        { id: 'hanging_48', label: '24-48 feet' },
+        { id: 'hanging_more', label: '48+ feet' }
+      ]);
+    }, 500);
+  };
+  
+  const handleHangingFootage = (footageId) => {
+    const labels = {
+      hanging_12: '4-12 feet',
+      hanging_24: '12-24 feet',
+      hanging_48: '24-48 feet',
+      hanging_more: '48+ feet'
+    };
+    
+    addMessage('user', labels[footageId]);
+    setConversationState(prev => ({ 
+      ...prev, 
+      hangingFootage: footageId,
+      confidenceFactors: { ...prev.confidenceFactors, hasSpaceInfo: true }
+    }));
+    
+    setTimeout(() => {
+      skipToTimeline();
+    }, 500);
+  };
+  
+  const handlePharmacyType = (pharmaId) => {
+    const labels = {
+      rx_specialized: 'Specialized Rx bay fixtures',
+      rx_standard: 'Standard shelving for OTC',
+      rx_both: 'Both Rx and OTC'
+    };
+    
+    addMessage('user', labels[pharmaId]);
+    setConversationState(prev => ({ 
+      ...prev, 
+      pharmacyType: pharmaId,
+      confidenceFactors: { ...prev.confidenceFactors, hasSpecialtyNeeds: true }
+    }));
+    
+    setTimeout(() => {
+      skipToTimeline();
+    }, 500);
+  };
+  
+  const handleHardwareDisplay = (hwId) => {
+    const labels = {
+      pegboard_hw: 'Pegboard (traditional)',
+      slatwall_hw: 'Slatwall (modern)',
+      shelving_hw: 'Standard shelving',
+      mixed_hw: 'Combination'
+    };
+    
+    addMessage('user', labels[hwId]);
+    setConversationState(prev => ({ 
+      ...prev, 
+      hardwareDisplay: hwId,
+      confidenceFactors: { ...prev.confidenceFactors, hasDisplayPreference: true }
+    }));
+    
+    setTimeout(() => {
+      skipToTimeline();
+    }, 500);
+  };
+  
+  const handleUncertaintyEscalation = (escalateId) => {
+    if (escalateId === 'yes_connect') {
+      addMessage('user', 'Yes, connect me with specialist');
+      setTimeout(() => {
+        addMessage('bot', "Perfect! I'll connect you with a Storflex specialist.\n\n📞 **Call now:** (800) 869-2040\n📧 **Email:** customerservice@storflex.com\n\nOr I can have someone reach out to you:", [
+          { id: 'send_to_specialist', label: 'Have specialist contact me' },
+          { id: 'call_instead', label: 'I\'ll call directly' }
+        ]);
+      }, 500);
+    } else {
+      addMessage('user', 'Continue with questions');
+      setTimeout(() => {
+        addMessage('bot', "No problem! Let's continue. What will you be displaying?", [
+          { id: 'packaged', label: 'Packaged goods' },
+          { id: 'bulk', label: 'Bulk items' },
+          { id: 'mixed', label: 'Mix of products' }
+        ]);
+        // Reset uncertainty counter since they want to continue
+        setConversationState(prev => ({ ...prev, uncertaintyCount: 0 }));
+      }, 500);
+    }
   };
 
   const handleTimeline = (timelineId) => {
@@ -3050,8 +3363,111 @@ const StorflexAssistant = () => {
     ]);
   };
 
+  // CONFIDENCE SCORING SYSTEM
+  const calculateConfidenceScore = () => {
+    let score = 0;
+    let factors = [];
+    
+    // Base score for completing the flow (30 points)
+    if (conversationState.businessType && conversationState.location && conversationState.timeline) {
+      score += 30;
+      factors.push('Completed core questions');
+    }
+    
+    // Business Type Clarity (15 points)
+    if (conversationState.businessType && conversationState.businessType !== 'other') {
+      score += 15;
+      factors.push('Clear business type');
+    } else if (conversationState.businessType === 'other') {
+      score += 7;
+      factors.push('General business type');
+    }
+    
+    // Location Specificity (15 points)
+    if (conversationState.location && conversationState.location !== 'not_sure' && conversationState.location !== 'multiple') {
+      score += 15;
+      factors.push('Specific location identified');
+    } else if (conversationState.location === 'multiple') {
+      score += 10;
+      factors.push('Multiple locations (complex)');
+    } else if (conversationState.location === 'not_sure') {
+      score += 5;
+      factors.push('Location uncertain');
+    }
+    
+    // Timeline Urgency (20 points - critical for prioritization)
+    const timelineScores = {
+      immediate: 20, // Hot lead
+      month: 15,     // Warm lead
+      quarter: 10,   // Medium lead
+      planning: 5    // Early stage
+    };
+    if (conversationState.timeline) {
+      const timelineScore = timelineScores[conversationState.timeline] || 5;
+      score += timelineScore;
+      if (conversationState.timeline === 'immediate') factors.push('URGENT: Immediate need');
+      else if (conversationState.timeline === 'month') factors.push('Warm: Within 30 days');
+      else if (conversationState.timeline === 'quarter') factors.push('Planning: 3 month horizon');
+      else factors.push('Early stage: Still planning');
+    }
+    
+    // Product Detail Completeness (10 points)
+    if (conversationState.items) {
+      score += 10;
+      factors.push('Product type specified');
+    }
+    
+    // Space Information (10 points)
+    if (conversationState.spaceInfo || conversationState.sectionCount || 
+        conversationState.palletPositions || conversationState.hangingFootage) {
+      score += 10;
+      factors.push('Space details provided');
+    }
+    
+    // Uncertainty Penalty (-5 points per "not sure")
+    if (conversationState.uncertaintyCount > 0) {
+      const penalty = Math.min(conversationState.uncertaintyCount * 5, 15); // Max 15 point penalty
+      score -= penalty;
+      factors.push(`Uncertainty: ${conversationState.uncertaintyCount} unclear answers`);
+    }
+    
+    // Bonus: Specialty/Complex Needs (adds value, not urgency)
+    if (conversationState.pharmacyType || conversationState.hardwareDisplay || 
+        conversationState.palletAccess === 'pallet_yes') {
+      score += 5;
+      factors.push('Specialty requirements');
+    }
+    
+    // Bonus: Complete Contact Info
+    if (leadFormData.company && leadFormData.phone) {
+      score += 5;
+      factors.push('Complete contact info');
+    }
+    
+    // Ensure score stays in 0-100 range
+    score = Math.max(0, Math.min(100, score));
+    
+    // Determine category
+    let category, priority;
+    if (score >= 85) {
+      category = 'Hot / Ready';
+      priority = '🔥 HIGH';
+    } else if (score >= 60) {
+      category = 'Warm / Needs Follow-up';
+      priority = '⚡ MEDIUM';
+    } else {
+      category = 'Early / Educational';
+      priority = '💡 LOW';
+    }
+    
+    return { score, category, priority, factors };
+  };
+
   const handleLeadSubmit = async (e) => {
     e.preventDefault();
+    
+    // Calculate confidence score
+    const confidence = calculateConfidenceScore();
     
     // Structure the lead data for Google Sheets
     const leadData = {
@@ -3070,7 +3486,14 @@ const StorflexAssistant = () => {
       spaceInfo: conversationState.spaceInfo || 'N/A',
       sectionCount: conversationState.sectionCount || 'N/A',
       timeline: conversationState.timeline || 'N/A',
-      notes: leadFormData.notes || 'None'
+      notes: leadFormData.notes || 'None',
+      // CONFIDENCE SCORING DATA (for sales team)
+      confidenceScore: confidence.score,
+      leadCategory: confidence.category,
+      priority: confidence.priority,
+      confidenceFactors: confidence.factors.join('; '),
+      uncertaintyCount: conversationState.uncertaintyCount || 0,
+      skippedQuestions: conversationState.skippedQuestions.join(', ') || 'None'
     };
 
     try {
@@ -3084,6 +3507,7 @@ const StorflexAssistant = () => {
       });
 
       console.log('Lead submitted successfully:', leadData);
+      console.log('Confidence Score:', confidence);
       
       setShowLeadForm(false);
       
@@ -3246,12 +3670,27 @@ const StorflexAssistant = () => {
       } else if ((state.location === 'cooler' || state.location === 'freezer' || state.location === 'both_cf') && !state.timeline) {
         handleTimeline(optionId);
       } else if (state.location && !state.items && !state.displayType) {
+        // ADAPTIVE PATH ROUTING
         if (optionId === 'yes' || optionId === 'no' || optionId === 'browse' || 
             optionId === 'send_to_specialist' || optionId === 'call_instead' || 
             optionId === 'confirm_and_continue' || optionId === 'edit_details') {
           handleQuoteRequest(optionId);
+        } else if (optionId === 'yes_connect' || optionId === 'continue_chatbot') {
+          handleUncertaintyEscalation(optionId);
         } else if (optionId.includes('_end') || optionId.includes('_corner') || optionId.includes('_checkout')) {
           handleDisplayType(optionId);
+        } else if (optionId.startsWith('pallet_')) {
+          handlePalletAccess(optionId);
+        } else if (optionId.startsWith('pallets_')) {
+          handlePalletPositions(optionId);
+        } else if (optionId === 'faceout' || optionId === 'waterfall' || optionId === 'straight_arm' || optionId === 'mixed_hanging') {
+          handleHangingDisplay(optionId);
+        } else if (optionId.startsWith('hanging_')) {
+          handleHangingFootage(optionId);
+        } else if (optionId.startsWith('rx_')) {
+          handlePharmacyType(optionId);
+        } else if (optionId.includes('_hw')) {
+          handleHardwareDisplay(optionId);
         } else {
           handleItems(optionId);
         }
