@@ -685,19 +685,6 @@ const StorflexAssistant = () => {
       ]);
     }, 500);
   };
-    };
-    
-    addMessage('user', labels[itemsId]);
-    setConversationState(prev => ({ ...prev, items: itemsId }));
-    
-    setTimeout(() => {
-      addMessage('bot', "Do you need adjustable shelves?", [
-        { id: 'yes', label: 'Yes, adjustable shelving' },
-        { id: 'no', label: 'No, fixed heights are fine' },
-        { id: 'unsure', label: 'Not sure' }
-      ]);
-    }, 500);
-  };
 
   const handleAdjustability = (adjustId) => {
     const labels = {
