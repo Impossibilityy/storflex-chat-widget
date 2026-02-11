@@ -505,12 +505,30 @@ const StorflexAssistant = () => {
       
       // ADAPTIVE: Wall-only skips aisle-specific questions
       if (locationId === 'wall') {
-        addMessage('bot', "For wall perimeter shelving, what **product type** will you display?", [
+        const businessType = conversationState.businessType;
+        
+        // Build business-specific wall options
+        let wallOptions = [
           { id: 'packaged', label: 'Packaged goods (cans, boxes)' },
-          { id: 'hanging', label: 'Hanging merchandise' },
-          { id: 'mixed', label: 'Mix of products' },
-          { id: 'pharmacy_items', label: 'Pharmacy/Rx items' }
-        ]);
+          { id: 'mixed', label: 'Mix of products' }
+        ];
+        
+        // Add business-specific options
+        if (businessType === 'retail' || businessType === 'other') {
+          wallOptions.splice(1, 0, { id: 'hanging', label: 'Hanging merchandise' });
+        }
+        if (businessType === 'pharmacy') {
+          wallOptions.push({ id: 'pharmacy_items', label: 'Pharmacy/OTC items' });
+        }
+        if (businessType === 'hardware') {
+          wallOptions.splice(1, 0, { id: 'hardware_items', label: 'Hardware/Tools' });
+        }
+        if (businessType === 'grocery' || businessType === 'convenience') {
+          wallOptions.push({ id: 'bulk', label: 'Bulk/Case storage' });
+        }
+        
+        addMessage('bot', "For wall perimeter shelving, what **product type** will you display?", wallOptions);
+        
         // Note: Wall-only doesn't need aisle width questions
         setConversationState(prev => ({ 
           ...prev, 
@@ -551,23 +569,65 @@ const StorflexAssistant = () => {
       // ADAPTIVE: Multiple areas needs more detail
       if (locationId === 'multiple') {
         addMessage('bot', "For multiple areas, which is your **primary focus** right now?", [
-          { id: 'aisles', label: 'Center aisles' },
-          { id: 'wall', label: 'Wall displays' },
-          { id: 'entire_store', label: 'Entire store layout' }
+          { id: 'focus_aisles', label: 'Center aisles' },
+          { id: 'focus_wall', label: 'Wall displays' },
+          { id: 'focus_entire', label: 'Entire store layout' }
         ]);
         return;
       }
       
-      // Standard path for center aisles
-      addMessage('bot', "What will you be displaying?", [
-        { id: 'packaged', label: 'Packaged goods (cans, boxes)' },
-        { id: 'bulk', label: 'Bulk items or cases' },
-        { id: 'hanging', label: 'Hanging merchandise' },
-        { id: 'mixed', label: 'Mix of products' },
-        { id: 'pharmacy_items', label: 'Pharmacy/Rx items' },
-        { id: 'hardware_items', label: 'Hardware/Tools' },
-        { id: 'specialty', label: 'Specialty/variable items' }
-      ]);
+      // Standard path for center aisles - with business-specific options
+      const businessType = conversationState.businessType;
+      let aisleOptions = [];
+      
+      // Build options based on business type
+      if (businessType === 'grocery' || businessType === 'convenience') {
+        aisleOptions = [
+          { id: 'packaged', label: 'Packaged goods (cans, boxes)' },
+          { id: 'bulk', label: 'Bulk items or cases' },
+          { id: 'mixed', label: 'Mix of products' },
+          { id: 'specialty', label: 'Specialty/variable items' }
+        ];
+      } else if (businessType === 'pharmacy') {
+        aisleOptions = [
+          { id: 'pharmacy_items', label: 'Pharmacy/Rx items' },
+          { id: 'packaged', label: 'Packaged OTC goods' },
+          { id: 'mixed', label: 'Mix of products' },
+          { id: 'specialty', label: 'Specialty items' }
+        ];
+      } else if (businessType === 'hardware') {
+        aisleOptions = [
+          { id: 'hardware_items', label: 'Hardware/Tools' },
+          { id: 'bulk', label: 'Bulk items (lumber, bags)' },
+          { id: 'packaged', label: 'Packaged goods' },
+          { id: 'mixed', label: 'Mix of products' }
+        ];
+      } else if (businessType === 'retail') {
+        aisleOptions = [
+          { id: 'packaged', label: 'Packaged goods' },
+          { id: 'hanging', label: 'Hanging merchandise' },
+          { id: 'mixed', label: 'Mix of products' },
+          { id: 'specialty', label: 'Specialty items' }
+        ];
+      } else if (businessType === 'liquor') {
+        aisleOptions = [
+          { id: 'packaged', label: 'Bottles & packaged goods' },
+          { id: 'bulk', label: 'Cases & kegs' },
+          { id: 'mixed', label: 'Mix of products' },
+          { id: 'specialty', label: 'Specialty/craft items' }
+        ];
+      } else {
+        // Default for 'other' business type
+        aisleOptions = [
+          { id: 'packaged', label: 'Packaged goods (cans, boxes)' },
+          { id: 'bulk', label: 'Bulk items or cases' },
+          { id: 'hanging', label: 'Hanging merchandise' },
+          { id: 'mixed', label: 'Mix of products' },
+          { id: 'specialty', label: 'Specialty/variable items' }
+        ];
+      }
+      
+      addMessage('bot', "What will you be displaying?", aisleOptions);
     }, 500);
   };
 
@@ -576,7 +636,7 @@ const StorflexAssistant = () => {
       standard_end: 'Standard end units',
       promotional: 'Promotional / Seasonal displays',
       both_ends: 'Both options',
-      inside_corner: 'Inside corner (dramatic transition)',
+      inside_corner: 'Inside corner (90° transition)',
       box_corner: 'Box corner (eliminate dead space)',
       not_sure_corner: 'Not sure - need advice',
       counter_system: 'Merchandising counter system',
@@ -587,8 +647,52 @@ const StorflexAssistant = () => {
     addMessage('user', labels[displayId]);
     setConversationState(prev => ({ ...prev, displayType: displayId }));
     
+    // BUSINESS-SPECIFIC GUIDANCE
     setTimeout(() => {
-      skipToTimeline();
+      const businessType = conversationState.businessType;
+      let guidance = '';
+      
+      // Checkout-specific business guidance
+      if (displayId.includes('checkout') || displayId === 'counter_system' || displayId === 'impulse_displays') {
+        if (businessType === 'grocery' || businessType === 'convenience') {
+          guidance = "\n\n💡 **Perfect for grocery:** Impulse displays excel with candy, magazines, drinks, and seasonal items at checkout.";
+        } else if (businessType === 'pharmacy') {
+          guidance = "\n\n💡 **Perfect for pharmacy:** Counter systems allow for private consultations and prescription pickups while maintaining customer flow.";
+        } else if (businessType === 'liquor') {
+          guidance = "\n\n💡 **Perfect for liquor stores:** Checkout displays work great for mixers, snacks, and gift items while maintaining clear sightlines for age verification.";
+        } else if (businessType === 'hardware') {
+          guidance = "\n\n💡 **Perfect for hardware:** Impulse tools, fasteners, batteries, and small items drive add-on sales at checkout.";
+        }
+      }
+      
+      // End cap-specific business guidance  
+      else if (displayId.includes('end')) {
+        if (businessType === 'grocery') {
+          guidance = "\n\n💡 **Grocery tip:** End caps are prime real estate for seasonal items, promotions, and high-margin products.";
+        } else if (businessType === 'hardware') {
+          guidance = "\n\n💡 **Hardware tip:** End caps work great for seasonal tools, project kits, and featured brand displays.";
+        } else if (businessType === 'pharmacy') {
+          guidance = "\n\n💡 **Pharmacy tip:** End caps are perfect for wellness promotions, seasonal health items, and beauty products.";
+        }
+      }
+      
+      // Corner-specific business guidance
+      else if (displayId.includes('corner')) {
+        if (businessType === 'hardware') {
+          guidance = "\n\n💡 **Safety tip:** Radius corners eliminate sharp edges in high-traffic hardware stores.";
+        } else if (businessType === 'grocery') {
+          guidance = "\n\n💡 **Grocery tip:** Inside corners work well for produce transitions or specialty food sections.";
+        } else if (businessType === 'retail') {
+          guidance = "\n\n💡 **Retail tip:** Box corners create boutique-style focal points perfect for featured collections.";
+        }
+      }
+      
+      if (guidance) {
+        addMessage('bot', `Great choice!${guidance}`);
+        setTimeout(() => skipToTimeline(), 1500);
+      } else {
+        skipToTimeline();
+      }
     }, 500);
   };
 
@@ -617,10 +721,23 @@ const StorflexAssistant = () => {
       uncertaintyCount: newUncertaintyCount
     }));
     
+    const businessType = conversationState.businessType;
+    const location = conversationState.location;
+    
     setTimeout(() => {
       // ADAPTIVE: Bulk/heavy items skip adjustability, ask about capacity
       if (itemsId === 'bulk') {
-        addMessage('bot', "For bulk storage, I need to understand **capacity needs**:\n\nWill you need pallet-level access or forklift clearance?", [
+        // Business-specific bulk guidance
+        let bulkGuidance = '';
+        if (businessType === 'grocery' || businessType === 'convenience') {
+          bulkGuidance = 'For grocery bulk storage, we can configure for cases, 6-packs, and palletized goods.';
+        } else if (businessType === 'hardware') {
+          bulkGuidance = 'For hardware bulk items like lumber, pipe, or bags, we offer heavy-duty configurations.';
+        } else if (businessType === 'liquor') {
+          bulkGuidance = 'For case storage and keg displays, we have specialized heavy-duty options.';
+        }
+        
+        addMessage('bot', `${bulkGuidance ? bulkGuidance + '\n\n' : ''}For bulk storage, I need to understand **capacity needs**:\n\nWill you need pallet-level access or forklift clearance?`, [
           { id: 'pallet_yes', label: 'Yes - pallet/forklift access needed' },
           { id: 'pallet_no', label: 'No - hand-stocked only' },
           { id: 'pallet_unsure', label: 'Not sure' }
@@ -634,7 +751,17 @@ const StorflexAssistant = () => {
       
       // ADAPTIVE: Hanging merchandise needs hook/arm questions, not shelf questions
       if (itemsId === 'hanging') {
-        addMessage('bot', "For hanging merchandise, what **display type** works best?", [
+        // Business-specific hanging guidance
+        let hangingGuidance = '';
+        if (businessType === 'retail') {
+          hangingGuidance = '**Retail apparel tip:** Choose display types that showcase your merchandise beautifully.';
+        } else if (businessType === 'hardware') {
+          hangingGuidance = '**Hardware tip:** Perfect for displaying hand tools, extension cords, and accessories.';
+        } else if (businessType === 'pharmacy') {
+          hangingGuidance = '**Pharmacy tip:** Great for medical devices, accessories, and personal care items.';
+        }
+        
+        addMessage('bot', `${hangingGuidance ? hangingGuidance + '\n\n' : ''}For hanging merchandise, what **display type** works best?`, [
           { id: 'faceout', label: 'Faceout displays' },
           { id: 'waterfall', label: 'Waterfall hooks' },
           { id: 'straight_arm', label: 'Straight arms' },
@@ -649,7 +776,15 @@ const StorflexAssistant = () => {
       
       // ADAPTIVE: Pharmacy items go to specialized pharmacy fixtures
       if (itemsId === 'pharmacy_items') {
-        addMessage('bot', "For pharmacy items, do you need **specialized Rx fixtures** or standard shelving?", [
+        // Location-specific pharmacy guidance
+        let pharmacyGuidance = '';
+        if (location === 'wall') {
+          pharmacyGuidance = '**Wall pharmacy displays:** Perfect for OTC medications organized by category, with Rx area separate.';
+        } else if (location === 'aisles' || location === 'multiple') {
+          pharmacyGuidance = '**Pharmacy aisles:** We can configure dedicated Rx bays with consultation areas plus OTC shelving.';
+        }
+        
+        addMessage('bot', `${pharmacyGuidance ? pharmacyGuidance + '\n\n' : ''}For pharmacy items, do you need **specialized Rx fixtures** or standard shelving?`, [
           { id: 'rx_specialized', label: 'Specialized Rx bay fixtures' },
           { id: 'rx_standard', label: 'Standard shelving for OTC' },
           { id: 'rx_both', label: 'Both Rx and OTC' }
@@ -663,7 +798,17 @@ const StorflexAssistant = () => {
       
       // ADAPTIVE: Hardware items often need pegboard/slatwall
       if (itemsId === 'hardware_items') {
-        addMessage('bot', "Hardware displays often use **pegboard or slatwall**. What's your preference?", [
+        // Location-specific hardware guidance
+        let hardwareGuidance = '';
+        if (location === 'wall') {
+          hardwareGuidance = '**Hardware walls:** Pegboard and slatwall maximize vertical space for tools and small parts.';
+        } else if (location === 'aisles') {
+          hardwareGuidance = '**Hardware aisles:** Combination of pegboard uprights with standard shelving works great for mixed inventory.';
+        } else if (location === 'endcaps') {
+          hardwareGuidance = '**Tool end caps:** Perfect for featured brands, seasonal items, and project kits.';
+        }
+        
+        addMessage('bot', `${hardwareGuidance ? hardwareGuidance + '\n\n' : ''}Hardware displays often use **pegboard or slatwall**. What's your preference?`, [
           { id: 'pegboard_hw', label: 'Pegboard (traditional)' },
           { id: 'slatwall_hw', label: 'Slatwall (modern)' },
           { id: 'shelving_hw', label: 'Standard shelving' },
@@ -676,8 +821,20 @@ const StorflexAssistant = () => {
         return;
       }
       
-      // Standard path for packaged goods/mixed
-      addMessage('bot', "What type of display works best for your products?", [
+      // Standard path for packaged goods/mixed with business-specific guidance
+      let adjustabilityGuidance = '';
+      
+      if (businessType === 'grocery' && (itemsId === 'packaged' || itemsId === 'mixed')) {
+        adjustabilityGuidance = '**Grocery tip:** Adjustable shelves adapt to package sizes from soup cans to cereal boxes.';
+      } else if (businessType === 'convenience' && itemsId === 'packaged') {
+        adjustabilityGuidance = '**Convenience store tip:** Adjustable shelving maximizes product variety in limited space.';
+      } else if (businessType === 'retail' && itemsId === 'mixed') {
+        adjustabilityGuidance = '**Retail tip:** Flexible adjustability lets you refresh displays seasonally.';
+      } else if (businessType === 'liquor' && itemsId === 'packaged') {
+        adjustabilityGuidance = '**Liquor store tip:** Adjustable shelves accommodate everything from splits to magnums.';
+      }
+      
+      addMessage('bot', `${adjustabilityGuidance ? adjustabilityGuidance + '\n\n' : ''}What type of display works best for your products?`, [
         { id: 'adjustable', label: 'Adjustable shelving (flexibility)' },
         { id: 'fixed', label: 'Fixed shelving (economy)' },
         { id: 'mixed_display', label: 'Mix of both' },
@@ -1147,6 +1304,58 @@ const StorflexAssistant = () => {
     
     setTimeout(() => {
       skipToTimeline();
+    }, 500);
+  };
+  
+  // MULTIPLE AREAS FOCUS HANDLER
+  const handleMultipleAreasFocus = (focusId) => {
+    const labels = {
+      focus_aisles: 'Center aisles',
+      focus_wall: 'Wall displays',
+      focus_entire: 'Entire store layout'
+    };
+    
+    addMessage('user', labels[focusId]);
+    
+    // Update location to reflect their primary focus
+    let primaryLocation;
+    if (focusId === 'focus_aisles') {
+      primaryLocation = 'aisles';
+    } else if (focusId === 'focus_wall') {
+      primaryLocation = 'wall';
+    } else {
+      primaryLocation = 'entire_store';
+    }
+    
+    setConversationState(prev => ({ 
+      ...prev, 
+      location: 'multiple', // Keep original selection
+      primaryFocus: primaryLocation, // Add focus detail
+      confidenceFactors: { ...prev.confidenceFactors, hasLocationDetail: true }
+    }));
+    
+    setTimeout(() => {
+      // Continue with appropriate next question based on focus
+      if (focusId === 'focus_entire') {
+        // Entire store layout - skip to space calculation
+        addMessage('bot', "For a full store layout, let's calculate your space needs.\n\nHow would you describe your space?", [
+          { id: 'square_footage', label: 'I know square footage' },
+          { id: 'linear_footage', label: 'I know linear footage' },
+          { id: 'sections', label: 'I know number of sections needed' },
+          { id: 'help', label: 'Need help figuring it out' }
+        ]);
+      } else {
+        // For aisles or wall - continue with standard flow
+        addMessage('bot', "What will you be displaying?", [
+          { id: 'packaged', label: 'Packaged goods (cans, boxes)' },
+          { id: 'bulk', label: 'Bulk items or cases' },
+          { id: 'hanging', label: 'Hanging merchandise' },
+          { id: 'mixed', label: 'Mix of products' },
+          { id: 'pharmacy_items', label: 'Pharmacy/Rx items' },
+          { id: 'hardware_items', label: 'Hardware/Tools' },
+          { id: 'specialty', label: 'Specialty/variable items' }
+        ]);
+      }
     }, 500);
   };
   
@@ -3949,6 +4158,9 @@ const StorflexAssistant = () => {
           handleQuoteRequest(optionId);
         } else if (optionId === 'yes_connect' || optionId === 'continue_chatbot') {
           handleUncertaintyEscalation(optionId);
+        } else if (optionId.startsWith('focus_')) {
+          // Handle multiple areas focus selection
+          handleMultipleAreasFocus(optionId);
         } else if (optionId.includes('_end') || optionId.includes('_corner') || optionId.includes('_checkout')) {
           handleDisplayType(optionId);
         } else if (optionId.startsWith('pallet_')) {
@@ -3971,9 +4183,17 @@ const StorflexAssistant = () => {
       } else if (state.timeline && (optionId === 'yes' || optionId === 'no' || optionId === 'browse')) {
         // After recommendation is shown, handle quote request
         handleQuoteRequest(optionId);
-      } else if (!state.adjustability) {
+      } 
+      // Check if we need adjustability question (only if not skipped)
+      else if (state.items && !state.adjustability && 
+               !state.skippedQuestions?.includes('adjustability') &&
+               !state.palletAccess && !state.hangingDisplay && !state.pharmacyType && !state.hardwareDisplay) {
         handleAdjustability(optionId);
-      } else if (!state.spaceInfo) {
+      }
+      // Check if we need space info (after adjustability or if adjustability was skipped)
+      else if ((state.adjustability || state.skippedQuestions?.includes('adjustability') || 
+                state.palletPositions || state.hangingFootage || state.pharmacyType || state.hardwareDisplay) && 
+               !state.spaceInfo && !state.calculatedSections) {
         handleSpaceInfo(optionId);
       } 
       // SPACE CALCULATION ROUTING
@@ -3991,7 +4211,9 @@ const StorflexAssistant = () => {
         handleSpaceConfirmation(optionId);
       } else if (state.spaceInfo === 'sections' && !state.sectionCount) {
         handleSectionCount(optionId);
-      } else if (!state.timeline) {
+      } 
+      // Check if we're ready for timeline (after space calculation)
+      else if ((state.spaceInfo || state.calculatedSections || state.spaceDetails) && !state.timeline) {
         handleTimeline(optionId);
       } else {
         handleQuoteRequest(optionId);
