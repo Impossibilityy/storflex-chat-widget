@@ -708,7 +708,8 @@ const StorflexAssistant = () => {
 
   const handleSpaceInfo = (spaceId) => {
     const labels = {
-      footage: 'I know square footage',
+      square_footage: 'I know square footage',
+      linear_footage: 'I know linear footage',
       sections: 'I know number of sections needed',
       dimensions: 'I have wall dimensions',
       help: 'Need help figuring it out'
@@ -717,7 +718,31 @@ const StorflexAssistant = () => {
     addMessage('user', labels[spaceId]);
     setConversationState(prev => ({ ...prev, spaceInfo: spaceId }));
     
-    if (spaceId === 'sections') {
+    // ADAPTIVE: Square footage calculation
+    if (spaceId === 'square_footage') {
+      setTimeout(() => {
+        addMessage('bot', "Great! What's your approximate **square footage** for this shelving area?", [
+          { id: 'sqft_100', label: 'Under 100 sq ft' },
+          { id: 'sqft_250', label: '100-250 sq ft' },
+          { id: 'sqft_500', label: '250-500 sq ft' },
+          { id: 'sqft_1000', label: '500-1,000 sq ft' },
+          { id: 'sqft_more', label: '1,000+ sq ft' }
+        ]);
+      }, 500);
+    }
+    // ADAPTIVE: Linear footage calculation
+    else if (spaceId === 'linear_footage') {
+      setTimeout(() => {
+        addMessage('bot', "Perfect! What's your approximate **linear footage** available?", [
+          { id: 'linear_12', label: '12-24 feet' },
+          { id: 'linear_36', label: '24-48 feet' },
+          { id: 'linear_72', label: '48-96 feet' },
+          { id: 'linear_more', label: '96+ feet' }
+        ]);
+      }, 500);
+    }
+    // ADAPTIVE: Direct sections known
+    else if (spaceId === 'sections') {
       setTimeout(() => {
         addMessage('bot', "How many sections do you need?", [
           { id: '1-5', label: '1-5 sections' },
@@ -726,7 +751,243 @@ const StorflexAssistant = () => {
           { id: '30+', label: '30+ sections' }
         ]);
       }, 500);
+    }
+    // ADAPTIVE: Dimensions calculation
+    else if (spaceId === 'dimensions') {
+      setTimeout(() => {
+        addMessage('bot', "What are your wall dimensions? Please provide **length in feet** (approximate):", [
+          { id: 'wall_8', label: '8-16 feet' },
+          { id: 'wall_20', label: '16-24 feet' },
+          { id: 'wall_32', label: '24-40 feet' },
+          { id: 'wall_more', label: '40+ feet' }
+        ]);
+      }, 500);
+    }
+    // Need help
+    else {
+      setTimeout(() => {
+        addMessage('bot', "No problem! Let's figure it out together. Do you know the **approximate size** of the area where shelving will go?", [
+          { id: 'small_area', label: 'Small area (retail corner/section)' },
+          { id: 'medium_area', label: 'Medium area (1-2 aisles)' },
+          { id: 'large_area', label: 'Large area (full store section)' },
+          { id: 'whole_store', label: 'Entire store' }
+        ]);
+      }, 500);
+    }
+  };
+  
+  // SPACE CALCULATION HANDLERS
+  
+  const handleSquareFootage = (sqftId) => {
+    const labels = {
+      sqft_100: 'Under 100 sq ft',
+      sqft_250: '100-250 sq ft',
+      sqft_500: '250-500 sq ft',
+      sqft_1000: '500-1,000 sq ft',
+      sqft_more: '1,000+ sq ft'
+    };
+    
+    addMessage('user', labels[sqftId]);
+    
+    // Calculate recommended sections based on square footage
+    // Standard gondola: 3-4 ft wide, assume 4-5 ft aisle clearance needed
+    // Rule of thumb: ~40-60 sq ft per gondola section (depending on layout)
+    let recommendation;
+    let sqftRange;
+    let reasoning;
+    
+    if (sqftId === 'sqft_100') {
+      recommendation = '2-4 sections';
+      sqftRange = '~100 sq ft';
+      reasoning = 'Compact space ideal for 2-4 gondola sections (3-4 ft each) with aisle clearance. Perfect for specialty areas or end caps.';
+    } else if (sqftId === 'sqft_250') {
+      recommendation = '4-8 sections';
+      sqftRange = '100-250 sq ft';
+      reasoning = 'Mid-size space can accommodate 4-8 sections creating 12-32 linear feet of display with proper aisle width (4-5 ft).';
+    } else if (sqftId === 'sqft_500') {
+      recommendation = '8-15 sections';
+      sqftRange = '250-500 sq ft';
+      reasoning = 'Large space perfect for 8-15 sections, creating multiple aisles or a full perimeter wall display with excellent traffic flow.';
+    } else if (sqftId === 'sqft_1000') {
+      recommendation = '15-30 sections';
+      sqftRange = '500-1,000 sq ft';
+      reasoning = 'Substantial retail space supporting 15-30 sections in multiple configurations: center aisles, perimeter walls, or mixed layouts.';
     } else {
+      recommendation = '30+ sections';
+      sqftRange = '1,000+ sq ft';
+      reasoning = 'Large-scale retail space with 30+ sections. Perfect for full store layouts, multiple departments, or warehouse-style displays.';
+    }
+    
+    setConversationState(prev => ({ 
+      ...prev, 
+      calculatedSections: recommendation,
+      spaceDetails: {
+        squareFootage: sqftRange,
+        recommendedSections: recommendation,
+        reasoning: reasoning
+      },
+      confidenceFactors: { ...prev.confidenceFactors, hasSpaceCalculation: true }
+    }));
+    
+    setTimeout(() => {
+      addMessage('bot', `**Space Analysis for ${sqftRange}:**\n\n📏 **Recommended:** ${recommendation}\n\n💡 **Why this fits:**\n${reasoning}\n\n*Based on standard 3-4 ft sections with 4-5 ft aisle clearance*`);
+      
+      setTimeout(() => {
+        addMessage('bot', "Does this recommendation align with your vision?", [
+          { id: 'space_good', label: 'Yes, sounds right' },
+          { id: 'space_more', label: 'Need more sections' },
+          { id: 'space_less', label: 'Need fewer sections' },
+          { id: 'space_unsure', label: 'Still not sure' }
+        ]);
+      }, 1000);
+    }, 500);
+  };
+  
+  const handleLinearFootage = (linearId) => {
+    const labels = {
+      linear_12: '12-24 feet',
+      linear_36: '24-48 feet',
+      linear_72: '48-96 feet',
+      linear_more: '96+ feet'
+    };
+    
+    addMessage('user', labels[linearId]);
+    
+    // Calculate sections based on linear footage
+    // Standard section: 3 ft (36") or 4 ft (48") wide
+    let recommendation;
+    let linearRange;
+    let reasoning;
+    
+    if (linearId === 'linear_12') {
+      recommendation = '3-6 sections';
+      linearRange = '12-24 feet';
+      reasoning = 'With 12-24 linear feet, you can fit 3-6 sections (assuming 4 ft sections). Great for wall displays or short aisles.';
+    } else if (linearId === 'linear_36') {
+      recommendation = '6-12 sections';
+      linearRange = '24-48 feet';
+      reasoning = 'Your 24-48 linear feet accommodates 6-12 sections, perfect for one full aisle or extended wall displays with excellent product visibility.';
+    } else if (linearId === 'linear_72') {
+      recommendation = '12-24 sections';
+      linearRange = '48-96 feet';
+      reasoning = 'With 48-96 linear feet available, 12-24 sections will create substantial display capacity across multiple aisles or full perimeter coverage.';
+    } else {
+      recommendation = '24+ sections';
+      linearRange = '96+ feet';
+      reasoning = 'Your 96+ linear feet supports 24+ sections for extensive merchandising across multiple aisles, departments, or full-store configurations.';
+    }
+    
+    setConversationState(prev => ({ 
+      ...prev, 
+      calculatedSections: recommendation,
+      spaceDetails: {
+        linearFootage: linearRange,
+        recommendedSections: recommendation,
+        reasoning: reasoning
+      },
+      confidenceFactors: { ...prev.confidenceFactors, hasSpaceCalculation: true }
+    }));
+    
+    setTimeout(() => {
+      addMessage('bot', `**Space Analysis for ${linearRange}:**\n\n📏 **Recommended:** ${recommendation}\n\n💡 **Why this fits:**\n${reasoning}\n\n*Based on standard 4 ft (48") gondola sections*`);
+      
+      setTimeout(() => {
+        addMessage('bot', "Does this sound about right?", [
+          { id: 'space_good', label: 'Yes, perfect' },
+          { id: 'space_adjust', label: 'Need to adjust' }
+        ]);
+      }, 1000);
+    }, 500);
+  };
+  
+  const handleAreaSize = (areaId) => {
+    const labels = {
+      small_area: 'Small area (retail corner/section)',
+      medium_area: 'Medium area (1-2 aisles)',
+      large_area: 'Large area (full store section)',
+      whole_store: 'Entire store'
+    };
+    
+    addMessage('user', labels[areaId]);
+    
+    let recommendation;
+    let reasoning;
+    
+    if (areaId === 'small_area') {
+      recommendation = '2-5 sections';
+      reasoning = 'Small corner or section area typically fits 2-5 sections, ideal for specialty displays, end caps, or focused product categories.';
+    } else if (areaId === 'medium_area') {
+      recommendation = '6-15 sections';
+      reasoning = 'Medium area with 1-2 aisles fits 6-15 sections comfortably, creating organized product zones with good traffic flow.';
+    } else if (areaId === 'large_area') {
+      recommendation = '16-40 sections';
+      reasoning = 'Large store section accommodates 16-40 sections for comprehensive department displays with multiple aisles and categories.';
+    } else {
+      recommendation = '40+ sections';
+      reasoning = 'Full store layout requires 40+ sections to create complete merchandising environment with multiple departments and optimal flow.';
+    }
+    
+    setConversationState(prev => ({ 
+      ...prev, 
+      calculatedSections: recommendation,
+      spaceDetails: {
+        areaSize: labels[areaId],
+        recommendedSections: recommendation,
+        reasoning: reasoning
+      },
+      confidenceFactors: { ...prev.confidenceFactors, hasSpaceCalculation: true }
+    }));
+    
+    setTimeout(() => {
+      addMessage('bot', `**Space Recommendation:**\n\n📏 **Sections Needed:** ${recommendation}\n\n💡 **Why:**\n${reasoning}`);
+      
+      setTimeout(() => {
+        skipToTimeline();
+      }, 1000);
+    }, 500);
+  };
+  
+  const handleSpaceConfirmation = (confirmId) => {
+    if (confirmId === 'space_good' || confirmId === 'space_adjust') {
+      addMessage('user', confirmId === 'space_good' ? 'Yes, sounds right' : 'Yes, perfect');
+      setTimeout(() => {
+        skipToTimeline();
+      }, 500);
+    } else if (confirmId === 'space_more') {
+      addMessage('user', 'Need more sections');
+      // Increase by ~50%
+      const current = conversationState.calculatedSections;
+      setTimeout(() => {
+        addMessage('bot', "Understood! We can scale up. Would you like to speak with a specialist to optimize your larger space?", [
+          { id: 'send_to_specialist', label: 'Yes, get specialist help' },
+          { id: 'continue_more', label: 'Continue with larger estimate' }
+        ]);
+      }, 500);
+    } else if (confirmId === 'space_less') {
+      addMessage('user', 'Need fewer sections');
+      setTimeout(() => {
+        addMessage('bot', "No problem! We can work with a smaller footprint. Let's continue with your scaled-down needs.");
+        setTimeout(() => skipToTimeline(), 1000);
+      }, 500);
+    } else if (confirmId === 'space_unsure') {
+      addMessage('user', 'Still not sure');
+      let newUncertaintyCount = conversationState.uncertaintyCount + 1;
+      setConversationState(prev => ({ ...prev, uncertaintyCount: newUncertaintyCount }));
+      
+      if (newUncertaintyCount >= 2) {
+        setTimeout(() => {
+          addMessage('bot', "I'd recommend speaking with a Storflex specialist who can help calculate your exact needs:\n\n📞 **(800) 869-2040**\n📧 **customerservice@storflex.com**\n\nOr I can have someone reach out:", [
+            { id: 'send_to_specialist', label: 'Have specialist contact me' },
+            { id: 'continue_anyway', label: 'Continue with estimate' }
+          ]);
+        }, 500);
+      } else {
+        setTimeout(() => {
+          skipToTimeline();
+        }, 500);
+      }
+    } else if (confirmId === 'continue_more' || confirmId === 'continue_anyway') {
+      addMessage('user', 'Continue');
       setTimeout(() => {
         skipToTimeline();
       }, 500);
@@ -3322,14 +3583,27 @@ const StorflexAssistant = () => {
       summaryText += `🎯 **Display Type:** ${conversationState.displayType}\n`;
     }
     
-    // Only show section count if it was collected
-    if (conversationState.sectionCount) {
+    // Only show section count if it was collected (but prioritize calculated sections)
+    if (conversationState.calculatedSections) {
+      summaryText += `📏 **Recommended Sections:** ${conversationState.calculatedSections}\n`;
+    } else if (conversationState.sectionCount) {
       summaryText += `📏 **Sections:** ${conversationState.sectionCount}\n`;
     }
     
-    // Only show space info if it was collected
-    if (conversationState.spaceInfo) {
-      summaryText += `📐 **Space:** ${conversationState.spaceInfo}\n`;
+    // ENHANCED: Show space calculation details if available
+    if (conversationState.spaceDetails) {
+      if (conversationState.spaceDetails.squareFootage) {
+        summaryText += `📐 **Square Footage:** ${conversationState.spaceDetails.squareFootage}\n`;
+      }
+      if (conversationState.spaceDetails.linearFootage) {
+        summaryText += `📐 **Linear Footage:** ${conversationState.spaceDetails.linearFootage}\n`;
+      }
+      if (conversationState.spaceDetails.areaSize) {
+        summaryText += `📐 **Area Size:** ${conversationState.spaceDetails.areaSize}\n`;
+      }
+    } else if (conversationState.spaceInfo && !conversationState.calculatedSections) {
+      // Fallback to basic space info if no detailed calculation
+      summaryText += `📐 **Space Info:** ${conversationState.spaceInfo}\n`;
     }
     
     // Only show adjustability if it was collected
@@ -3404,8 +3678,11 @@ const StorflexAssistant = () => {
       factors.push('Product type specified');
     }
     
-    // Space Information (10 points)
-    if (conversationState.spaceInfo || conversationState.sectionCount || 
+    // Space Information (10 points + bonus for calculations)
+    if (conversationState.spaceDetails || conversationState.calculatedSections) {
+      score += 12; // Bonus for using calculator
+      factors.push('Space calculated with recommendation');
+    } else if (conversationState.spaceInfo || conversationState.sectionCount || 
         conversationState.palletPositions || conversationState.hangingFootage) {
       score += 10;
       factors.push('Space details provided');
@@ -3470,10 +3747,18 @@ const StorflexAssistant = () => {
       items: conversationState.items || 'N/A',
       displayType: conversationState.displayType || 'N/A',
       adjustability: conversationState.adjustability || 'N/A',
-      spaceInfo: conversationState.spaceInfo || 'N/A',
-      sectionCount: conversationState.sectionCount || 'N/A',
+      
+      // ENHANCED SPACE INFORMATION
+      spaceInfoType: conversationState.spaceInfo || 'N/A',
+      calculatedSections: conversationState.calculatedSections || conversationState.sectionCount || 'N/A',
+      squareFootage: conversationState.spaceDetails?.squareFootage || 'N/A',
+      linearFootage: conversationState.spaceDetails?.linearFootage || 'N/A',
+      areaSize: conversationState.spaceDetails?.areaSize || 'N/A',
+      spaceReasoning: conversationState.spaceDetails?.reasoning || 'N/A',
+      
       timeline: conversationState.timeline || 'N/A',
       notes: leadFormData.notes || 'None',
+      
       // CONFIDENCE SCORING DATA (for sales team)
       confidenceScore: confidence.score,
       leadCategory: confidence.category,
@@ -3690,6 +3975,20 @@ const StorflexAssistant = () => {
         handleAdjustability(optionId);
       } else if (!state.spaceInfo) {
         handleSpaceInfo(optionId);
+      } 
+      // SPACE CALCULATION ROUTING
+      else if (optionId.startsWith('sqft_')) {
+        handleSquareFootage(optionId);
+      } else if (optionId.startsWith('linear_')) {
+        handleLinearFootage(optionId);
+      } else if (optionId.startsWith('wall_')) {
+        handleLinearFootage(optionId.replace('wall_', 'linear_')); // Reuse linear logic
+      } else if (optionId.includes('_area') || optionId === 'whole_store') {
+        handleAreaSize(optionId);
+      } else if (optionId === 'space_good' || optionId === 'space_more' || optionId === 'space_less' || 
+                 optionId === 'space_unsure' || optionId === 'space_adjust' || 
+                 optionId === 'continue_more' || optionId === 'continue_anyway') {
+        handleSpaceConfirmation(optionId);
       } else if (state.spaceInfo === 'sections' && !state.sectionCount) {
         handleSectionCount(optionId);
       } else if (!state.timeline) {
