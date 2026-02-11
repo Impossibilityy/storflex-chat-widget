@@ -3997,7 +3997,7 @@ const StorflexAssistant = () => {
 
     try {
       // Send to Google Sheets via Google Apps Script Web App
-      const response = await fetch('https://script.google.com/macros/s/AKfycbzFYF-MFC3opMqQE5PK07nCv_yXL6I0imdAwFKcTcTBZ3uJIOG9WfhGboeIwmIoExoJ/exec', {
+      const response = await fetch('https://script.google.com/macros/s/AKfycbxDlLRpGEq6UuNfGUQRJTWyjTt4BoyyRjjerN1eG_vdvCghLoTdrAaqfzjvRIC4zw3x/exec', {
         method: 'POST',
         headers: {
           'Content-Type': 'text/plain',
