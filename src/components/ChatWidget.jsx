@@ -835,27 +835,45 @@ const StorflexAssistant = () => {
       }
       
       addMessage('bot', `${adjustabilityGuidance ? adjustabilityGuidance + '\n\n' : ''}What type of display works best for your products?`, [
-        { id: 'adjustable', label: 'Adjustable shelving (flexibility)' },
-        { id: 'fixed', label: 'Fixed shelving (economy)' },
-        { id: 'mixed_display', label: 'Mix of both' },
-        { id: 'not_sure_display', label: 'Not sure' }
+        { id: 'yes', label: 'Adjustable shelving (flexibility)' },
+        { id: 'no', label: 'Fixed shelving (economy)' },
+        { id: 'mixed', label: 'Mix of both' },
+        { id: 'unsure', label: 'Not sure' }
       ]);
     }, 500);
   };
 
   const handleAdjustability = (adjustId) => {
     const labels = {
-      yes: 'Yes, adjustable shelving',
-      no: 'No, fixed heights are fine',
+      yes: 'Adjustable shelving (flexibility)',
+      no: 'Fixed shelving (economy)',
+      mixed: 'Mix of both',
       unsure: 'Not sure'
     };
     
     addMessage('user', labels[adjustId]);
     setConversationState(prev => ({ ...prev, adjustability: adjustId }));
     
+    // Track uncertainty
+    if (adjustId === 'unsure') {
+      let newUncertaintyCount = conversationState.uncertaintyCount + 1;
+      setConversationState(prev => ({ ...prev, uncertaintyCount: newUncertaintyCount }));
+      
+      if (newUncertaintyCount >= 2) {
+        setTimeout(() => {
+          addMessage('bot', "I notice you're unsure about several details. Let me connect you with a specialist:\n\n📞 **(800) 869-2040**\n📧 **customerservice@storflex.com**\n\nOr I can have someone reach out:", [
+            { id: 'send_to_specialist', label: 'Have specialist contact me' },
+            { id: 'continue_anyway', label: 'Continue with estimate' }
+          ]);
+        }, 500);
+        return;
+      }
+    }
+    
     setTimeout(() => {
       addMessage('bot', "How would you describe your space?", [
-        { id: 'footage', label: 'I know square footage' },
+        { id: 'square_footage', label: 'I know square footage' },
+        { id: 'linear_footage', label: 'I know linear footage' },
         { id: 'sections', label: 'I know number of sections needed' },
         { id: 'dimensions', label: 'I have wall dimensions' },
         { id: 'help', label: 'Need help figuring it out' }
@@ -4116,6 +4134,8 @@ const StorflexAssistant = () => {
   };
 
   const processOptionSelectionWithState = (optionId, state) => {
+    console.log('Processing option:', optionId, 'State:', state); // Debug log
+    
     // Process selection with explicit state (used after reset)
     if (!state.mode) {
       handleIntentSelection(optionId);
@@ -4144,79 +4164,182 @@ const StorflexAssistant = () => {
         handleSupportContact();
       }
     } else if (state.mode === 'sales') {
+      // SALES FLOW ROUTING - Process in logical order
+      
+      // Step 1: Business Type
       if (!state.businessType) {
         handleBusinessType(optionId);
-      } else if (!state.location) {
-        handleLocation(optionId);
-      } else if ((state.location === 'cooler' || state.location === 'freezer' || state.location === 'both_cf') && !state.timeline) {
-        handleTimeline(optionId);
-      } else if (state.location && !state.items && !state.displayType) {
-        // ADAPTIVE PATH ROUTING
-        if (optionId === 'yes' || optionId === 'no' || optionId === 'browse' || 
-            optionId === 'send_to_specialist' || optionId === 'call_instead' || 
-            optionId === 'confirm_and_continue' || optionId === 'edit_details') {
-          handleQuoteRequest(optionId);
-        } else if (optionId === 'yes_connect' || optionId === 'continue_chatbot') {
-          handleUncertaintyEscalation(optionId);
-        } else if (optionId.startsWith('focus_')) {
-          // Handle multiple areas focus selection
-          handleMultipleAreasFocus(optionId);
-        } else if (optionId.includes('_end') || optionId.includes('_corner') || optionId.includes('_checkout')) {
-          handleDisplayType(optionId);
-        } else if (optionId.startsWith('pallet_')) {
-          handlePalletAccess(optionId);
-        } else if (optionId.startsWith('pallets_')) {
-          handlePalletPositions(optionId);
-        } else if (optionId === 'faceout' || optionId === 'waterfall' || optionId === 'straight_arm' || optionId === 'mixed_hanging') {
-          handleHangingDisplay(optionId);
-        } else if (optionId.startsWith('hanging_')) {
-          handleHangingFootage(optionId);
-        } else if (optionId.startsWith('rx_')) {
-          handlePharmacyType(optionId);
-        } else if (optionId.includes('_hw')) {
-          handleHardwareDisplay(optionId);
-        } else {
-          handleItems(optionId);
-        }
-      } else if (state.displayType && !state.timeline) {
-        handleTimeline(optionId);
-      } else if (state.timeline && (optionId === 'yes' || optionId === 'no' || optionId === 'browse')) {
-        // After recommendation is shown, handle quote request
-        handleQuoteRequest(optionId);
-      } 
-      // Check if we need adjustability question (only if not skipped)
-      else if (state.items && !state.adjustability && 
-               !state.skippedQuestions?.includes('adjustability') &&
-               !state.palletAccess && !state.hangingDisplay && !state.pharmacyType && !state.hardwareDisplay) {
-        handleAdjustability(optionId);
+        return;
       }
-      // Check if we need space info (after adjustability or if adjustability was skipped)
-      else if ((state.adjustability || state.skippedQuestions?.includes('adjustability') || 
-                state.palletPositions || state.hangingFootage || state.pharmacyType || state.hardwareDisplay) && 
-               !state.spaceInfo && !state.calculatedSections) {
-        handleSpaceInfo(optionId);
-      } 
-      // SPACE CALCULATION ROUTING
-      else if (optionId.startsWith('sqft_')) {
-        handleSquareFootage(optionId);
-      } else if (optionId.startsWith('linear_')) {
-        handleLinearFootage(optionId);
-      } else if (optionId.startsWith('wall_')) {
-        handleLinearFootage(optionId.replace('wall_', 'linear_')); // Reuse linear logic
-      } else if (optionId.includes('_area') || optionId === 'whole_store') {
-        handleAreaSize(optionId);
-      } else if (optionId === 'space_good' || optionId === 'space_more' || optionId === 'space_less' || 
-                 optionId === 'space_unsure' || optionId === 'space_adjust' || 
-                 optionId === 'continue_more' || optionId === 'continue_anyway') {
-        handleSpaceConfirmation(optionId);
-      } else if (state.spaceInfo === 'sections' && !state.sectionCount) {
-        handleSectionCount(optionId);
-      } 
-      // Check if we're ready for timeline (after space calculation)
-      else if ((state.spaceInfo || state.calculatedSections || state.spaceDetails) && !state.timeline) {
+      
+      // Step 2: Location
+      if (!state.location) {
+        handleLocation(optionId);
+        return;
+      }
+      
+      // Step 3: Handle cooler/freezer fast-track to timeline
+      if ((state.location === 'cooler' || state.location === 'freezer' || state.location === 'both_cf') && !state.timeline) {
         handleTimeline(optionId);
-      } else {
+        return;
+      }
+      
+      // Step 4: Handle quote-related options (can appear anywhere)
+      if (optionId === 'yes' || optionId === 'no' || optionId === 'browse' || 
+          optionId === 'send_to_specialist' || optionId === 'call_instead' || 
+          optionId === 'confirm_and_continue' || optionId === 'edit_details') {
         handleQuoteRequest(optionId);
+        return;
+      }
+      
+      // Step 5: Handle uncertainty escalation
+      if (optionId === 'yes_connect' || optionId === 'continue_chatbot') {
+        handleUncertaintyEscalation(optionId);
+        return;
+      }
+      
+      // Step 6: Handle specialty location refinements
+      if (optionId.startsWith('focus_')) {
+        handleMultipleAreasFocus(optionId);
+        return;
+      }
+      
+      if (optionId.includes('_end') || optionId.includes('_corner') || optionId.includes('_checkout')) {
+        handleDisplayType(optionId);
+        return;
+      }
+      
+      // Step 7: Handle timeline if display type is set
+      if (state.displayType && !state.timeline) {
+        handleTimeline(optionId);
+        return;
+      }
+      
+      // Step 8: Handle timeline after recommendation
+      if (state.timeline && (optionId === 'yes' || optionId === 'no' || optionId === 'browse')) {
+        handleQuoteRequest(optionId);
+        return;
+      }
+      
+      // Step 9: Handle items-related paths (bulk, hanging, pharmacy, hardware)
+      if (optionId.startsWith('pallet_') && !optionId.startsWith('pallets_')) {
+        handlePalletAccess(optionId);
+        return;
+      }
+      
+      if (optionId.startsWith('pallets_')) {
+        handlePalletPositions(optionId);
+        return;
+      }
+      
+      if (optionId === 'faceout' || optionId === 'waterfall' || optionId === 'straight_arm' || optionId === 'mixed_hanging') {
+        handleHangingDisplay(optionId);
+        return;
+      }
+      
+      if (optionId.startsWith('hanging_')) {
+        handleHangingFootage(optionId);
+        return;
+      }
+      
+      if (optionId.startsWith('rx_')) {
+        handlePharmacyType(optionId);
+        return;
+      }
+      
+      if (optionId.includes('_hw')) {
+        handleHardwareDisplay(optionId);
+        return;
+      }
+      
+      // Step 10: Handle items selection
+      if (!state.items && !state.displayType && 
+          (optionId === 'packaged' || optionId === 'bulk' || optionId === 'hanging' || 
+           optionId === 'mixed' || optionId === 'pharmacy_items' || optionId === 'hardware_items' || 
+           optionId === 'specialty')) {
+        handleItems(optionId);
+        return;
+      }
+      
+      // Step 11: Handle adjustability (yes, no, mixed, unsure)
+      if (optionId === 'yes' || optionId === 'no' || optionId === 'mixed' || optionId === 'unsure') {
+        if (state.items && !state.adjustability && 
+            !state.skippedQuestions?.includes('adjustability') &&
+            !state.palletAccess && !state.hangingDisplay && !state.pharmacyType && !state.hardwareDisplay) {
+          handleAdjustability(optionId);
+          return;
+        }
+      }
+      
+      // Step 12: Handle space info type selection
+      if (optionId === 'square_footage' || optionId === 'linear_footage' || 
+          optionId === 'sections' || optionId === 'dimensions' || optionId === 'help') {
+        handleSpaceInfo(optionId);
+        return;
+      }
+      
+      // Step 13: Handle square footage calculation
+      if (optionId.startsWith('sqft_')) {
+        handleSquareFootage(optionId);
+        return;
+      }
+      
+      // Step 14: Handle linear footage calculation
+      if (optionId.startsWith('linear_')) {
+        handleLinearFootage(optionId);
+        return;
+      }
+      
+      // Step 15: Handle wall dimensions (reuse linear logic)
+      if (optionId.startsWith('wall_')) {
+        handleLinearFootage(optionId.replace('wall_', 'linear_'));
+        return;
+      }
+      
+      // Step 16: Handle area size
+      if (optionId.includes('_area') || optionId === 'whole_store') {
+        handleAreaSize(optionId);
+        return;
+      }
+      
+      // Step 17: Handle space confirmation
+      if (optionId === 'space_good' || optionId === 'space_more' || optionId === 'space_less' || 
+          optionId === 'space_unsure' || optionId === 'space_adjust' || 
+          optionId === 'continue_more' || optionId === 'continue_anyway') {
+        handleSpaceConfirmation(optionId);
+        return;
+      }
+      
+      // Step 18: Handle section count
+      if (state.spaceInfo === 'sections' && !state.sectionCount &&
+          (optionId === '1-5' || optionId === '6-15' || optionId === '16-30' || optionId === '30+')) {
+        handleSectionCount(optionId);
+        return;
+      }
+      
+      // Step 19: Handle timeline if we have space details
+      if ((state.spaceInfo || state.calculatedSections || state.spaceDetails) && !state.timeline &&
+          (optionId === 'immediate' || optionId === 'month' || optionId === 'quarter' || optionId === 'planning')) {
+        handleTimeline(optionId);
+        return;
+      }
+      
+      // Step 20: Final fallback - log and try to handle gracefully
+      console.warn('Unhandled option ID:', optionId, 'State:', state);
+      
+      // Try to determine what to do based on state
+      if (!state.items && !state.displayType) {
+        // Probably should be items
+        handleItems(optionId);
+      } else if (state.items && !state.adjustability && !state.spaceInfo) {
+        // Probably should be adjustability or space
+        handleSpaceInfo('help'); // Default to help
+      } else if (!state.timeline) {
+        // Probably should be timeline
+        handleTimeline('planning'); // Default to planning
+      } else {
+        // Last resort - go to quote
+        handleQuoteRequest('yes');
       }
     }
   };
