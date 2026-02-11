@@ -3783,9 +3783,8 @@ const StorflexAssistant = () => {
     };
     
     const timelineLabels = {
-      immediate: 'ASAP (1-2 weeks)',
-      month: 'Within a month',
-      quarter: 'Next 3 months',
+      asap: 'ASAP / this month',
+      soon: '1-3 months',
       planning: 'Just planning'
     };
     
@@ -3885,17 +3884,15 @@ const StorflexAssistant = () => {
     
     // Timeline Urgency (20 points - critical for prioritization)
     const timelineScores = {
-      immediate: 20, // Hot lead
-      month: 15,     // Warm lead
-      quarter: 10,   // Medium lead
-      planning: 5    // Early stage
+      asap: 20,      // Hot lead - ASAP/this month
+      soon: 15,      // Warm lead - 1-3 months
+      planning: 5    // Early stage - just planning
     };
     if (conversationState.timeline) {
       const timelineScore = timelineScores[conversationState.timeline] || 5;
       score += timelineScore;
-      if (conversationState.timeline === 'immediate') factors.push('URGENT: Immediate need');
-      else if (conversationState.timeline === 'month') factors.push('Warm: Within 30 days');
-      else if (conversationState.timeline === 'quarter') factors.push('Planning: 3 month horizon');
+      if (conversationState.timeline === 'asap') factors.push('URGENT: ASAP need');
+      else if (conversationState.timeline === 'soon') factors.push('Warm: Within 1-3 months');
       else factors.push('Early stage: Still planning');
     }
     
@@ -4209,13 +4206,13 @@ const StorflexAssistant = () => {
         return;
       }
       
-      // Step 7: Handle timeline if display type is set
-      if (state.displayType && !state.timeline) {
+      // Step 7: Handle timeline options (asap, soon, planning)
+      if (optionId === 'asap' || optionId === 'soon' || optionId === 'planning') {
         handleTimeline(optionId);
         return;
       }
       
-      // Step 8: Handle timeline after recommendation
+      // Step 8: Handle quote options after timeline/recommendation
       if (state.timeline && (optionId === 'yes' || optionId === 'no' || optionId === 'browse')) {
         handleQuoteRequest(optionId);
         return;
@@ -4319,7 +4316,7 @@ const StorflexAssistant = () => {
       
       // Step 19: Handle timeline if we have space details
       if ((state.spaceInfo || state.calculatedSections || state.spaceDetails) && !state.timeline &&
-          (optionId === 'immediate' || optionId === 'month' || optionId === 'quarter' || optionId === 'planning')) {
+          (optionId === 'asap' || optionId === 'soon' || optionId === 'planning')) {
         handleTimeline(optionId);
         return;
       }
