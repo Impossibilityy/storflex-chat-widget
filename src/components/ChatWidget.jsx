@@ -1,6 +1,77 @@
 import React, { useState } from 'react';
 import { Send, ChevronRight, CheckCircle, Package, Wrench, Mail, Phone, ExternalLink } from 'lucide-react';
 
+// Subtle CSS animations for professional polish
+const styles = `
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateX(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+  
+  .animate-slide-in {
+    animation: slideIn 0.3s ease-out;
+  }
+  
+  .animate-scale-in {
+    animation: scaleIn 0.3s ease-out;
+  }
+  
+  .smooth-transition {
+    transition: all 0.2s ease-in-out;
+  }
+  
+  .hover-lift:hover {
+    transform: translateY(-1px);
+  }
+  
+  .hover-scale:hover {
+    transform: scale(1.02);
+  }
+  
+  .active\:scale-98:active {
+    transform: scale(0.98);
+  }
+`;
+
+// Inject styles into document
+if (typeof document !== 'undefined') {
+  const styleSheet = document.createElement('style');
+  styleSheet.textContent = styles;
+  document.head.appendChild(styleSheet);
+}
+
 /*
  * GOOGLE SHEETS INTEGRATION SETUP
  * ================================
@@ -165,12 +236,13 @@ const StorflexAssistant = () => {
   // Widget toggle state
   const [isWidgetOpen, setIsWidgetOpen] = useState(false);
 
-  const addMessage = (type, text, options = null, productLinks = null) => {
+  const addMessage = (type, text, options = null, productLinks = null, whyFits = null) => {
     const newMessage = {
       type,
       text,
       options,
       productLinks,
+      whyFits,
       timestamp: new Date()
     };
     setMessages(prev => [...prev, newMessage]);
@@ -665,23 +737,19 @@ const StorflexAssistant = () => {
         'Wide variety of options available',
         'Factory-direct pricing and fast lead times'
       ];
-      recommendationText = `Based on your needs, let me connect you with our product catalog:\n\n`;
+      recommendationText = `Based on your needs, let me connect you with our product catalog:`;
     } else if (primaryProducts.length === 1) {
-      recommendationText = `Based on your needs, I recommend:\n\n${primaryProducts[0].name}\n\n`;
+      recommendationText = `Based on your needs, I recommend:\n\n**${primaryProducts[0].name}**`;
     } else {
-      recommendationText = `Based on your needs, I recommend these solutions:\n\n`;
+      recommendationText = `Based on your needs, I recommend these solutions:`;
     }
-    
-    recommendationText += "Why this fits your needs:\n";
-    whyFits.forEach(reason => {
-      recommendationText += `- ${reason}\n`;
-    });
     
     if (catalogPages) {
-      recommendationText += `\nCatalog Reference: ${catalogPages}`;
+      recommendationText += `\n\n📖 **Catalog Reference:** ${catalogPages}`;
     }
     
-    addMessage('bot', recommendationText, null, primaryProducts);
+    // Pass whyFits as separate parameter for the "Why This Fits" card
+    addMessage('bot', recommendationText, null, primaryProducts, whyFits);
     
     setTimeout(() => {
       addMessage('bot', "Would you like a detailed quote, or browse all our products?", [
@@ -2847,8 +2915,37 @@ const StorflexAssistant = () => {
       addMessage('user', 'Yes, get me a quote');
       
       setTimeout(() => {
-        addMessage('bot', "Great! I'll need a few details to prepare your quote.");
+        // Soft lead capture - ask permission first
+        addMessage('bot', "Perfect! I can connect you with a Storflex specialist who'll prepare a custom quote.\n\n**Would you like me to send your information to them?**", [
+          { id: 'send_to_specialist', label: 'Yes, send to specialist' },
+          { id: 'call_instead', label: 'I\'ll just call instead' }
+        ]);
+      }, 500);
+    } else if (requestId === 'send_to_specialist') {
+      addMessage('user', 'Yes, send to specialist');
+      
+      setTimeout(() => {
+        // Show confirmation summary before form
+        showConfirmationSummary();
+      }, 500);
+    } else if (requestId === 'confirm_and_continue') {
+      addMessage('user', 'Looks good, continue');
+      
+      setTimeout(() => {
+        addMessage('bot', "Great! Just a few details so we can prepare your quote:");
         setShowLeadForm(true);
+      }, 500);
+    } else if (requestId === 'edit_details') {
+      addMessage('user', 'Let me change something');
+      
+      setTimeout(() => {
+        addMessage('bot', "No problem! Click any of your previous answers above to make changes, then come back here.");
+      }, 500);
+    } else if (requestId === 'call_instead') {
+      addMessage('user', 'I\'ll just call instead');
+      
+      setTimeout(() => {
+        addMessage('bot', "Perfect! Give us a call:\n\n📞 **(800) 869-2040**\n\nMention you spoke with the Storflex Assistant and we'll have your information ready!");
       }, 500);
     } else if (requestId === 'browse') {
       addMessage('user', 'Browse all products');
@@ -2860,9 +2957,97 @@ const StorflexAssistant = () => {
       addMessage('user', 'Just call me');
       
       setTimeout(() => {
-        addMessage('bot', "Perfect! Give us a call:\n\n(800) 869-2040\n\nMention you spoke with the Storflex Assistant!");
+        addMessage('bot', "Perfect! Give us a call:\n\n📞 **(800) 869-2040**\n\nMention you spoke with the Storflex Assistant!");
       }, 500);
     }
+  };
+  
+  // Show confirmation summary before lead form
+  const showConfirmationSummary = () => {
+    const businessTypeLabels = {
+      retail: 'Retail Store',
+      convenience: 'Convenience Store',
+      grocery: 'Grocery Store',
+      pharmacy: 'Pharmacy',
+      liquor: 'Liquor Store',
+      hardware: 'Hardware Store',
+      other: 'Other Business'
+    };
+    
+    const locationLabels = {
+      aisles: 'Center Aisles',
+      wall: 'Wall/Perimeter',
+      checkout: 'Checkout Area',
+      corner: 'Corner Spaces',
+      endcap: 'End Caps',
+      cooler: 'Walk-In Cooler',
+      freezer: 'Walk-In Freezer',
+      both_cf: 'Cooler & Freezer',
+      multiple: 'Multiple Areas',
+      not_sure: 'Not Sure Yet'
+    };
+    
+    const itemsLabels = {
+      packaged: 'Packaged Goods',
+      bulk: 'Bulk Items',
+      hanging: 'Hanging Merchandise',
+      mixed: 'Mixed Products'
+    };
+    
+    const timelineLabels = {
+      immediate: 'ASAP (1-2 weeks)',
+      month: 'Within a month',
+      quarter: 'Next 3 months',
+      planning: 'Just planning'
+    };
+    
+    let summaryText = "**Here's what we'll send to our specialist:**\n\n";
+    
+    // Always show business type and location
+    if (conversationState.businessType) {
+      summaryText += `🏢 **Business Type:** ${businessTypeLabels[conversationState.businessType] || conversationState.businessType}\n`;
+    }
+    
+    if (conversationState.location) {
+      summaryText += `📍 **Location Needs:** ${locationLabels[conversationState.location] || conversationState.location}\n`;
+    }
+    
+    // Only show items if it was collected
+    if (conversationState.items) {
+      summaryText += `📦 **Products:** ${itemsLabels[conversationState.items] || conversationState.items}\n`;
+    }
+    
+    // Only show display type if it was collected
+    if (conversationState.displayType) {
+      summaryText += `🎯 **Display Type:** ${conversationState.displayType}\n`;
+    }
+    
+    // Only show section count if it was collected
+    if (conversationState.sectionCount) {
+      summaryText += `📏 **Sections:** ${conversationState.sectionCount}\n`;
+    }
+    
+    // Only show space info if it was collected
+    if (conversationState.spaceInfo) {
+      summaryText += `📐 **Space:** ${conversationState.spaceInfo}\n`;
+    }
+    
+    // Only show adjustability if it was collected
+    if (conversationState.adjustability) {
+      summaryText += `🔧 **Adjustability:** ${conversationState.adjustability}\n`;
+    }
+    
+    // Always show timeline if available
+    if (conversationState.timeline) {
+      summaryText += `⏰ **Timeline:** ${timelineLabels[conversationState.timeline] || conversationState.timeline}\n`;
+    }
+    
+    summaryText += "\n*This helps us provide the most accurate quote for your needs.*";
+    
+    addMessage('bot', summaryText, [
+      { id: 'confirm_and_continue', label: 'Looks good, continue' },
+      { id: 'edit_details', label: 'Let me change something' }
+    ]);
   };
 
   const handleLeadSubmit = async (e) => {
@@ -3061,7 +3246,9 @@ const StorflexAssistant = () => {
       } else if ((state.location === 'cooler' || state.location === 'freezer' || state.location === 'both_cf') && !state.timeline) {
         handleTimeline(optionId);
       } else if (state.location && !state.items && !state.displayType) {
-        if (optionId === 'yes' || optionId === 'no' || optionId === 'browse') {
+        if (optionId === 'yes' || optionId === 'no' || optionId === 'browse' || 
+            optionId === 'send_to_specialist' || optionId === 'call_instead' || 
+            optionId === 'confirm_and_continue' || optionId === 'edit_details') {
           handleQuoteRequest(optionId);
         } else if (optionId.includes('_end') || optionId.includes('_corner') || optionId.includes('_checkout')) {
           handleDisplayType(optionId);
@@ -3119,13 +3306,13 @@ const StorflexAssistant = () => {
       {!isWidgetOpen && (
         <button
           onClick={() => setIsWidgetOpen(true)}
-          className="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-50 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-4 shadow-2xl transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-4 focus:ring-blue-300"
-          aria-label="Open Storflex Assistant"
+          className="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-50 bg-gradient-to-br from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-full p-4 shadow-2xl smooth-transition hover-scale focus:outline-none focus:ring-4 focus:ring-blue-300 animate-scale-in"
+          aria-label="Open Storflex Product Specialist"
         >
           <div className="relative">
             <Package className="w-6 h-6" />
             {/* Online indicator */}
-            <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white"></span>
+            <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white animate-pulse"></span>
           </div>
         </button>
       )}
@@ -3146,18 +3333,20 @@ const StorflexAssistant = () => {
             style={{ maxHeight: '100vh' }}
           >
           {/* Header with Close Button */}
-          <div className="bg-blue-600 text-white p-3 sm:p-4 shadow-lg flex-shrink-0 rounded-t-2xl">
+          <div className="bg-gradient-to-r from-blue-700 to-blue-600 text-white p-3 sm:p-4 shadow-lg flex-shrink-0 rounded-t-2xl">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 sm:gap-3">
-                <Package className="w-6 h-6 sm:w-7 sm:h-7 flex-shrink-0" />
+                <div className="bg-white bg-opacity-20 p-1.5 sm:p-2 rounded-lg backdrop-blur-sm">
+                  <Package className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" />
+                </div>
                 <div className="min-w-0">
-                  <h1 className="text-base sm:text-lg font-bold">The Storflex Assistant</h1>
-                  <p className="text-xs text-blue-100">Product Assistant</p>
+                  <h1 className="text-base sm:text-lg font-bold">Storflex Assistant</h1>
+                  <p className="text-xs text-blue-100">Product Specialist</p>
                 </div>
               </div>
               <button
                 onClick={() => setIsWidgetOpen(false)}
-                className="p-2 hover:bg-blue-700 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-white"
+                className="p-2 hover:bg-white hover:bg-opacity-20 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-white"
                 aria-label="Close chat"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3232,18 +3421,18 @@ const StorflexAssistant = () => {
           })()}
 
           {/* Messages Area */}
-          <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-4 sm:space-y-5 bg-gradient-to-br from-blue-50 to-gray-50">
-            <div className="max-w-4xl mx-auto space-y-4 sm:space-y-5">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 space-y-4 sm:space-y-5 bg-gradient-to-br from-blue-50 to-gray-50 scroll-smooth">
+            <div className="max-w-4xl mx-auto space-y-4 sm:space-y-5 w-full">
           {messages.map((message, index) => (
             <div
               key={index}
-              className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+              className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`}
             >
               <div
-                className={`max-w-[85%] sm:max-w-[80%] rounded-2xl p-3.5 sm:p-4 ${
+                className={`max-w-[85%] sm:max-w-[80%] rounded-2xl p-3.5 sm:p-4 smooth-transition ${
                   message.type === 'user'
-                    ? 'bg-blue-600 text-white text-sm sm:text-base shadow-md'
-                    : 'bg-white text-gray-900 shadow-lg border border-gray-100 text-sm sm:text-base'
+                    ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white text-sm sm:text-base shadow-md'
+                    : 'bg-white text-gray-900 shadow-lg border border-gray-100 text-sm sm:text-base hover-lift'
                 }`}
               >
                 {message.text && (
@@ -3252,6 +3441,31 @@ const StorflexAssistant = () => {
               
               {message.productLinks && (
                 <div className="mt-2 sm:mt-3 space-y-2">
+                  {/* "Why This Fits" Card - Only show when there are whyFits reasons */}
+                  {message.whyFits && message.whyFits.length > 0 && (
+                    <div className="mb-4 bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-4 shadow-md animate-scale-in hover-lift smooth-transition">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </div>
+                        <h4 className="font-bold text-green-900 text-base">Why This Fits Your Needs</h4>
+                      </div>
+                      <ul className="space-y-2.5">
+                        {message.whyFits.map((reason, idx) => (
+                          <li key={idx} className="flex items-start gap-2.5">
+                            <svg className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                            <span className="text-sm text-green-900 leading-relaxed flex-1">{reason}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  
+                  {/* Product Links */}
                   {(Array.isArray(message.productLinks) ? message.productLinks : [message.productLinks]).map((product, idx) => (
                     <a
                       key={idx}
@@ -3286,9 +3500,9 @@ const StorflexAssistant = () => {
                       <button
                         key={option.id}
                         onClick={() => handleOptionClick(index, option.id)}
-                        className={`w-full text-left px-3.5 py-3 sm:px-4 sm:py-3.5 border-2 rounded-xl transition-all duration-200 flex items-center gap-2.5 group text-sm sm:text-base font-medium touch-manipulation ${
+                        className={`w-full text-left px-4 py-3.5 sm:px-4 sm:py-3.5 border-2 rounded-xl smooth-transition flex items-center gap-2.5 group text-sm sm:text-base font-medium touch-manipulation min-h-[48px] hover-scale ${
                           isCurrentQuestion 
-                            ? 'bg-white hover:bg-blue-50 active:bg-blue-100 border-blue-200 hover:border-blue-400 text-gray-900 hover:shadow-md' 
+                            ? 'bg-white hover:bg-blue-50 active:bg-blue-100 border-blue-200 hover:border-blue-400 text-gray-900 hover:shadow-lg' 
                             : 'bg-gray-50 hover:bg-gray-100 active:bg-gray-200 border-gray-300 text-gray-700 opacity-80 hover:opacity-100'
                         }`}
                         title={isPreviousQuestion ? "Click to change this answer" : ""}
@@ -3309,26 +3523,27 @@ const StorflexAssistant = () => {
         ))}
         
         {showLeadForm && (
-          <div className="bg-white rounded-2xl shadow-lg border-2 border-blue-200 p-4 sm:p-6">
-            <h3 className="text-base sm:text-lg font-bold mb-3 sm:mb-4 flex items-center gap-2">
-              <Mail className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
+          <div className="bg-white rounded-2xl shadow-xl border-2 border-blue-300 p-5 sm:p-6 animate-scale-in">
+            <h3 className="text-lg sm:text-xl font-bold mb-1 flex items-center gap-2.5 text-gray-900">
+              <Mail className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 flex-shrink-0" />
               Contact Information
             </h3>
-            <form onSubmit={handleLeadSubmit} className="space-y-3">
+            <p className="text-sm text-gray-600 mb-4">We'll prepare a custom quote for you</p>
+            <form onSubmit={handleLeadSubmit} className="space-y-3.5">
               <input
                 type="text"
                 placeholder="Name *"
                 required
                 value={leadFormData.name}
                 onChange={(e) => setLeadFormData({...leadFormData, name: e.target.value})}
-                className="w-full px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 text-sm sm:text-base border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 smooth-transition min-h-[48px]"
               />
               <input
                 type="text"
                 placeholder="Company"
                 value={leadFormData.company}
                 onChange={(e) => setLeadFormData({...leadFormData, company: e.target.value})}
-                className="w-full px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 text-sm sm:text-base border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 smooth-transition min-h-[48px]"
               />
               <input
                 type="email"
@@ -3336,14 +3551,14 @@ const StorflexAssistant = () => {
                 required
                 value={leadFormData.email}
                 onChange={(e) => setLeadFormData({...leadFormData, email: e.target.value})}
-                className="w-full px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 text-sm sm:text-base border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 smooth-transition min-h-[48px]"
               />
               <input
                 type="tel"
                 placeholder="Phone"
                 value={leadFormData.phone}
                 onChange={(e) => setLeadFormData({...leadFormData, phone: e.target.value})}
-                className="w-full px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 text-sm sm:text-base border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 smooth-transition min-h-[48px]"
               />
               <div className="flex gap-2 sm:gap-3">
                 <input
@@ -3367,13 +3582,13 @@ const StorflexAssistant = () => {
                 placeholder="Notes"
                 value={leadFormData.notes}
                 onChange={(e) => setLeadFormData({...leadFormData, notes: e.target.value})}
-                className="w-full px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent h-20 resize-none"
+                className="w-full px-4 py-3 text-sm sm:text-base border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 smooth-transition h-24 resize-none"
               />
               <button
                 type="submit"
-                className="w-full bg-blue-600 text-white py-2.5 sm:py-3 rounded-lg text-sm sm:text-base font-semibold hover:bg-blue-700 active:bg-blue-800 transition-colors flex items-center justify-center gap-2 touch-manipulation"
+                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3.5 rounded-xl text-sm sm:text-base font-semibold hover:from-blue-700 hover:to-blue-800 active:scale-98 smooth-transition flex items-center justify-center gap-2.5 touch-manipulation min-h-[52px] shadow-md hover:shadow-lg"
               >
-                <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+                <CheckCircle className="w-5 h-5" />
                 Submit Request
               </button>
             </form>
@@ -3382,27 +3597,53 @@ const StorflexAssistant = () => {
         </div>
       </div>
 
-      {/* Footer - Responsive */}
+      {/* Footer - Always visible with human escape hatch */}
       {!showLeadForm && (
-        <div className="border-t border-gray-200 p-3 sm:p-4 bg-white flex-shrink-0">
-          <div className="mx-auto">
+        <div className="border-t border-gray-200 bg-white flex-shrink-0">
+          {/* Human Escape Hatch - Always visible, low pressure */}
+          <div className="px-3 sm:px-4 pt-3 pb-2 border-b border-gray-100">
+            <div className="flex items-center justify-center gap-2 text-xs text-gray-600">
+              <span>Prefer to talk to someone?</span>
+              <a 
+                href="tel:+18008692040" 
+                className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 font-medium smooth-transition hover-lift"
+              >
+                <Phone className="w-3 h-3" />
+                Call us
+              </a>
+              <span className="text-gray-400">or</span>
+              <a 
+                href="mailto:customerservice@storflex.com" 
+                className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 font-medium smooth-transition hover-lift"
+              >
+                <Mail className="w-3 h-3" />
+                Email
+              </a>
+            </div>
+          </div>
+          
+          {/* Input area - Sticky for mobile */}
+          <div className="p-3 sm:p-4">
             <form onSubmit={handleTextSubmit} className="flex gap-2">
               <input
                 type="text"
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 placeholder="Type a message..."
-                className="flex-1 px-3 py-2.5 sm:px-4 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="flex-1 px-4 py-3 text-sm sm:text-base border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 smooth-transition min-h-[44px]"
               />
               <button
                 type="submit"
-                className="bg-blue-600 text-white p-2.5 sm:p-3 rounded-full hover:bg-blue-700 active:bg-blue-800 transition-colors flex-shrink-0 touch-manipulation"
+                className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-3 rounded-xl hover:from-blue-700 hover:to-blue-800 active:scale-95 smooth-transition flex-shrink-0 touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center shadow-md hover:shadow-lg"
+                aria-label="Send message"
               >
-                <Send className="w-4 h-4 sm:w-5 sm:h-5" />
+                <Send className="w-5 h-5" />
               </button>
             </form>
-            <p className="text-xs sm:text-sm text-gray-500 text-center mt-2">
-              Storflex Holdings Inc. | (800) 869-2040 | Corning, NY
+            
+            {/* Subtle branding */}
+            <p className="text-[10px] sm:text-xs text-gray-400 text-center mt-2.5">
+              Storflex Holdings Inc. • Corning, NY
             </p>
           </div>
         </div>
