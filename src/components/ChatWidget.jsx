@@ -4004,7 +4004,7 @@ const StorflexAssistant = () => {
 
     try {
       // Send to Google Sheets via Google Apps Script Web App
-      const response = await fetch('https://script.google.com/macros/s/AKfycbyV3ku6oBNXWB-shA1x7rhRtKX3VG_YMM1ytkQ5_rtGRO69E4D7zx2fn4B2hpoif8Oz/exec', {
+      const response = await fetch('https://script.google.com/macros/s/AKfycbwH9abi05XUWGKiJb0sq6cdami3W8a09NcBwl7kHiPNMHq6yex0YWqht5cl9sV5Rpeh/exec', {
         method: 'POST',
         headers: {
           'Content-Type': 'text/plain',
@@ -4368,11 +4368,24 @@ const StorflexAssistant = () => {
     setAdminError('');
     
     try {
-      const response = await fetch(`https://script.google.com/macros/s/AKfycbyV3ku6oBNXWB-shA1x7rhRtKX3VG_YMM1ytkQ5_rtGRO69E4D7zx2fn4B2hpoif8Oz/exec?token=${encodeURIComponent(adminToken)}&limit=50`);
+      const url = `https://script.google.com/macros/s/AKfycbwH9abi05XUWGKiJb0sq6cdami3W8a09NcBwl7kHiPNMHq6yex0YWqht5cl9sV5Rpeh/exec?token=${encodeURIComponent(adminToken)}&limit=50`;
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        setAdminError(`HTTP error: ${response.status}`);
+        setAdminLoading(false);
+        return;
+      }
+      
       const data = await response.json();
+      console.log('Admin API response:', data); // Debug log
       
       if (!data.ok) {
-        setAdminError(data.error === 'unauthorized' ? 'Invalid admin token' : 'Error loading leads');
+        if (data.error === 'unauthorized') {
+          setAdminError('Invalid admin token');
+        } else {
+          setAdminError(`Error: ${data.error || 'Unknown error'}`);
+        }
         setAdminLoading(false);
         return;
       }
@@ -4381,7 +4394,8 @@ const StorflexAssistant = () => {
       setAdminAuthenticated(true);
       setAdminLoading(false);
     } catch (error) {
-      setAdminError('Network error - check script URL');
+      console.error('Admin login error:', error);
+      setAdminError(`Network error: ${error.message}`);
       setAdminLoading(false);
     }
   };
@@ -4393,12 +4407,25 @@ const StorflexAssistant = () => {
     setAdminError('');
     
     try {
-      const response = await fetch(`https://script.google.com/macros/s/AKfycbyV3ku6oBNXWB-shA1x7rhRtKX3VG_YMM1ytkQ5_rtGRO69E4D7zx2fn4B2hpoif8Oz/exec?token=${encodeURIComponent(adminToken)}&limit=50`);
+      const url = `https://script.google.com/macros/s/AKfycbwH9abi05XUWGKiJb0sq6cdami3W8a09NcBwl7kHiPNMHq6yex0YWqht5cl9sV5Rpeh/exec?token=${encodeURIComponent(adminToken)}&limit=50`;
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        setAdminError(`HTTP error: ${response.status}`);
+        setAdminLoading(false);
+        return;
+      }
+      
       const data = await response.json();
+      console.log('Admin refresh response:', data); // Debug log
       
       if (!data.ok) {
-        setAdminError('Session expired - please login again');
-        setAdminAuthenticated(false);
+        if (data.error === 'unauthorized') {
+          setAdminError('Session expired - please login again');
+          setAdminAuthenticated(false);
+        } else {
+          setAdminError(`Error: ${data.error || 'Unknown error'}`);
+        }
         setAdminLoading(false);
         return;
       }
@@ -4406,7 +4433,8 @@ const StorflexAssistant = () => {
       setAdminLeads(data.leads || []);
       setAdminLoading(false);
     } catch (error) {
-      setAdminError('Network error');
+      console.error('Admin refresh error:', error);
+      setAdminError(`Network error: ${error.message}`);
       setAdminLoading(false);
     }
   };
