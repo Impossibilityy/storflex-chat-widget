@@ -4020,7 +4020,7 @@ const StorflexAssistant = () => {
 
     try {
       // Send to Google Sheets via Google Apps Script Web App
-      const response = await fetch('https://script.google.com/macros/s/AKfycbx0CG5M9RX2imArAj9IRnGxxIYlEHjF5Aqdolk85nicSG05mZ1Gpol_U-oBk3-jrqlG/exec', {
+      const response = await fetch('https://script.google.com/macros/s/AKfycbyIw_m9boMyhbXRr-SyqZlw-fnsrwTdBO4IcQFIM57E_qDvFzyiHQV8-8G9TYzsoS1U/exec', {
         method: 'POST',
         headers: {
           'Content-Type': 'text/plain',
@@ -4385,7 +4385,7 @@ const StorflexAssistant = () => {
     
     try {
       // Check if master admin
-      const checkResponse = await fetch(`https://script.google.com/macros/s/AKfycbx0CG5M9RX2imArAj9IRnGxxIYlEHjF5Aqdolk85nicSG05mZ1Gpol_U-oBk3-jrqlG/exec?action=checkMasterAdmin&token=${encodeURIComponent(adminToken)}`);
+      const checkResponse = await fetch(`https://script.google.com/macros/s/AKfycbyIw_m9boMyhbXRr-SyqZlw-fnsrwTdBO4IcQFIM57E_qDvFzyiHQV8-8G9TYzsoS1U/exec?action=checkMasterAdmin&token=${encodeURIComponent(adminToken)}`);
       const checkData = await checkResponse.json();
       
       if (!checkData.ok) {
@@ -4398,7 +4398,7 @@ const StorflexAssistant = () => {
       
       if (checkData.isMasterAdmin) {
         // Master admin - show user selection
-        const usersResponse = await fetch(`https://script.google.com/macros/s/AKfycbx0CG5M9RX2imArAj9IRnGxxIYlEHjF5Aqdolk85nicSG05mZ1Gpol_U-oBk3-jrqlG/exec?action=getUsers&token=${encodeURIComponent(adminToken)}`);
+        const usersResponse = await fetch(`https://script.google.com/macros/s/AKfycbyIw_m9boMyhbXRr-SyqZlw-fnsrwTdBO4IcQFIM57E_qDvFzyiHQV8-8G9TYzsoS1U/exec?action=getUsers&token=${encodeURIComponent(adminToken)}`);
         const usersData = await usersResponse.json();
         
         if (usersData.ok) {
@@ -4443,7 +4443,7 @@ const StorflexAssistant = () => {
     setAdminError('');
     
     try {
-      let url = `https://script.google.com/macros/s/AKfycbx0CG5M9RX2imArAj9IRnGxxIYlEHjF5Aqdolk85nicSG05mZ1Gpol_U-oBk3-jrqlG/exec?action=getLeads&token=${encodeURIComponent(adminToken)}&limit=100`;
+      let url = `https://script.google.com/macros/s/AKfycbyIw_m9boMyhbXRr-SyqZlw-fnsrwTdBO4IcQFIM57E_qDvFzyiHQV8-8G9TYzsoS1U/exec?action=getLeads&token=${encodeURIComponent(adminToken)}&limit=100`;
       
       if (filterStatus) url += `&status=${encodeURIComponent(filterStatus)}`;
       if (filterAssignedTo) url += `&assignedTo=${encodeURIComponent(filterAssignedTo)}`;
@@ -4482,7 +4482,7 @@ const StorflexAssistant = () => {
   
   const handleUpdateLead = async (leadRowIndex, updates) => {
     try {
-      const response = await fetch('https://script.google.com/macros/s/AKfycbx0CG5M9RX2imArAj9IRnGxxIYlEHjF5Aqdolk85nicSG05mZ1Gpol_U-oBk3-jrqlG/exec', {
+      const response = await fetch('https://script.google.com/macros/s/AKfycbyIw_m9boMyhbXRr-SyqZlw-fnsrwTdBO4IcQFIM57E_qDvFzyiHQV8-8G9TYzsoS1U/exec', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -4516,7 +4516,7 @@ const StorflexAssistant = () => {
     setAdminLoading(true);
     
     try {
-      const response = await fetch('https://script.google.com/macros/s/AKfycbx0CG5M9RX2imArAj9IRnGxxIYlEHjF5Aqdolk85nicSG05mZ1Gpol_U-oBk3-jrqlG/exec', {
+      const response = await fetch('https://script.google.com/macros/s/AKfycbyIw_m9boMyhbXRr-SyqZlw-fnsrwTdBO4IcQFIM57E_qDvFzyiHQV8-8G9TYzsoS1U/exec', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -4536,7 +4536,7 @@ const StorflexAssistant = () => {
         setShowCreateUser(false);
         
         // Refresh users list
-        const usersResponse = await fetch(`https://script.google.com/macros/s/AKfycbx0CG5M9RX2imArAj9IRnGxxIYlEHjF5Aqdolk85nicSG05mZ1Gpol_U-oBk3-jrqlG/exec?action=getUsers&token=${encodeURIComponent(adminToken)}`);
+        const usersResponse = await fetch(`https://script.google.com/macros/s/AKfycbyIw_m9boMyhbXRr-SyqZlw-fnsrwTdBO4IcQFIM57E_qDvFzyiHQV8-8G9TYzsoS1U/exec?action=getUsers&token=${encodeURIComponent(adminToken)}`);
         const usersData = await usersResponse.json();
         if (usersData.ok) {
           setUsers(usersData.users || []);
