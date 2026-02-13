@@ -231,11 +231,27 @@ const StorflexAssistant = () => {
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [adminAuthenticated, setAdminAuthenticated] = useState(false);
   const [adminToken, setAdminToken] = useState('');
+  const [isMasterAdmin, setIsMasterAdmin] = useState(false);
   const [adminLeads, setAdminLeads] = useState([]);
   const [adminLoading, setAdminLoading] = useState(false);
   const [adminError, setAdminError] = useState('');
   const [adminSearchTerm, setAdminSearchTerm] = useState('');
   const [expandedLeadIndex, setExpandedLeadIndex] = useState(null);
+  
+  // User management
+  const [showUserSelect, setShowUserSelect] = useState(false);
+  const [showSecondTokenPrompt, setShowSecondTokenPrompt] = useState(false);
+  const [secondToken, setSecondToken] = useState('');
+  const [selectedUser, setSelectedUser] = useState('');
+  const [users, setUsers] = useState([]);
+  const [showCreateUser, setShowCreateUser] = useState(false);
+  const [newUserName, setNewUserName] = useState('');
+  const [newUserEmail, setNewUserEmail] = useState('');
+  
+  // CRM features
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterAssignedTo, setFilterAssignedTo] = useState('');
+  const [currentView, setCurrentView] = useState('all'); // 'all' or 'my-leads'
   const [leadFormData, setLeadFormData] = useState({
     name: '',
     company: '',
@@ -4004,7 +4020,7 @@ const StorflexAssistant = () => {
 
     try {
       // Send to Google Sheets via Google Apps Script Web App
-      const response = await fetch('https://script.google.com/macros/s/AKfycbwH9abi05XUWGKiJb0sq6cdami3W8a09NcBwl7kHiPNMHq6yex0YWqht5cl9sV5Rpeh/exec', {
+      const response = await fetch('https://script.google.com/macros/s/AKfycbx0CG5M9RX2imArAj9IRnGxxIYlEHjF5Aqdolk85nicSG05mZ1Gpol_U-oBk3-jrqlG/exec', {
         method: 'POST',
         headers: {
           'Content-Type': 'text/plain',
@@ -4356,7 +4372,7 @@ const StorflexAssistant = () => {
     processOptionSelectionWithState(optionId, conversationState);
   };
 
-  // ===== ADMIN DASHBOARD FUNCTIONS =====
+  // ===== ADMIN DASHBOARD FUNCTIONS (ENHANCED CRM SYSTEM) =====
   
   const handleAdminLogin = async () => {
     if (!adminToken.trim()) {
@@ -4368,31 +4384,35 @@ const StorflexAssistant = () => {
     setAdminError('');
     
     try {
-      const url = `https://script.google.com/macros/s/AKfycbwH9abi05XUWGKiJb0sq6cdami3W8a09NcBwl7kHiPNMHq6yex0YWqht5cl9sV5Rpeh/exec?token=${encodeURIComponent(adminToken)}&limit=50`;
-      const response = await fetch(url);
+      // Check if master admin
+      const checkResponse = await fetch(`https://script.google.com/macros/s/AKfycbx0CG5M9RX2imArAj9IRnGxxIYlEHjF5Aqdolk85nicSG05mZ1Gpol_U-oBk3-jrqlG/exec?action=checkMasterAdmin&token=${encodeURIComponent(adminToken)}`);
+      const checkData = await checkResponse.json();
       
-      if (!response.ok) {
-        setAdminError(`HTTP error: ${response.status}`);
+      if (!checkData.ok) {
+        setAdminError('Invalid token');
         setAdminLoading(false);
         return;
       }
       
-      const data = await response.json();
-      console.log('Admin API response:', data); // Debug log
+      setIsMasterAdmin(checkData.isMasterAdmin);
       
-      if (!data.ok) {
-        if (data.error === 'unauthorized') {
-          setAdminError('Invalid admin token');
+      if (checkData.isMasterAdmin) {
+        // Master admin - show user selection
+        const usersResponse = await fetch(`https://script.google.com/macros/s/AKfycbx0CG5M9RX2imArAj9IRnGxxIYlEHjF5Aqdolk85nicSG05mZ1Gpol_U-oBk3-jrqlG/exec?action=getUsers&token=${encodeURIComponent(adminToken)}`);
+        const usersData = await usersResponse.json();
+        
+        if (usersData.ok) {
+          setUsers(usersData.users || []);
+          setShowUserSelect(true);
+          setAdminLoading(false);
         } else {
-          setAdminError(`Error: ${data.error || 'Unknown error'}`);
+          setAdminError('Error loading users');
+          setAdminLoading(false);
         }
-        setAdminLoading(false);
-        return;
+      } else {
+        // Regular admin - fetch leads directly
+        await fetchLeads();
       }
-      
-      setAdminLeads(data.leads || []);
-      setAdminAuthenticated(true);
-      setAdminLoading(false);
     } catch (error) {
       console.error('Admin login error:', error);
       setAdminError(`Network error: ${error.message}`);
@@ -4400,14 +4420,34 @@ const StorflexAssistant = () => {
     }
   };
   
-  const handleAdminRefresh = async () => {
-    if (!adminAuthenticated) return;
-    
+  const handleUserSelection = (userName) => {
+    setSelectedUser(userName);
+    if (userName === 'Default Admin') {
+      // Default admin doesn't need second token
+      setShowSecondTokenPrompt(false);
+      fetchLeads();
+    } else {
+      // Show second token prompt
+      setShowSecondTokenPrompt(true);
+    }
+  };
+  
+  const handleSecondTokenSubmit = async () => {
+    setShowSecondTokenPrompt(false);
+    setShowUserSelect(false);
+    await fetchLeads();
+  };
+  
+  const fetchLeads = async () => {
     setAdminLoading(true);
     setAdminError('');
     
     try {
-      const url = `https://script.google.com/macros/s/AKfycbwH9abi05XUWGKiJb0sq6cdami3W8a09NcBwl7kHiPNMHq6yex0YWqht5cl9sV5Rpeh/exec?token=${encodeURIComponent(adminToken)}&limit=50`;
+      let url = `https://script.google.com/macros/s/AKfycbx0CG5M9RX2imArAj9IRnGxxIYlEHjF5Aqdolk85nicSG05mZ1Gpol_U-oBk3-jrqlG/exec?action=getLeads&token=${encodeURIComponent(adminToken)}&limit=100`;
+      
+      if (filterStatus) url += `&status=${encodeURIComponent(filterStatus)}`;
+      if (filterAssignedTo) url += `&assignedTo=${encodeURIComponent(filterAssignedTo)}`;
+      
       const response = await fetch(url);
       
       if (!response.ok) {
@@ -4417,24 +4457,98 @@ const StorflexAssistant = () => {
       }
       
       const data = await response.json();
-      console.log('Admin refresh response:', data); // Debug log
+      console.log('Leads response:', data);
       
       if (!data.ok) {
-        if (data.error === 'unauthorized') {
-          setAdminError('Session expired - please login again');
-          setAdminAuthenticated(false);
-        } else {
-          setAdminError(`Error: ${data.error || 'Unknown error'}`);
-        }
+        setAdminError(`Error: ${data.error || 'Unknown error'}`);
         setAdminLoading(false);
         return;
       }
       
       setAdminLeads(data.leads || []);
+      setAdminAuthenticated(true);
+      setShowUserSelect(false);
       setAdminLoading(false);
     } catch (error) {
-      console.error('Admin refresh error:', error);
+      console.error('Fetch leads error:', error);
       setAdminError(`Network error: ${error.message}`);
+      setAdminLoading(false);
+    }
+  };
+  
+  const handleAdminRefresh = () => {
+    fetchLeads();
+  };
+  
+  const handleUpdateLead = async (leadRowIndex, updates) => {
+    try {
+      const response = await fetch('https://script.google.com/macros/s/AKfycbx0CG5M9RX2imArAj9IRnGxxIYlEHjF5Aqdolk85nicSG05mZ1Gpol_U-oBk3-jrqlG/exec', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'updateLead',
+          token: adminToken,
+          rowIndex: leadRowIndex,
+          ...updates
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.result === 'success') {
+        // Refresh leads after update
+        await fetchLeads();
+      } else {
+        setAdminError('Error updating lead');
+      }
+    } catch (error) {
+      console.error('Update lead error:', error);
+      setAdminError('Network error updating lead');
+    }
+  };
+  
+  const handleCreateUser = async () => {
+    if (!newUserName.trim() || !newUserEmail.trim()) {
+      setAdminError('Please enter name and email');
+      return;
+    }
+    
+    setAdminLoading(true);
+    
+    try {
+      const response = await fetch('https://script.google.com/macros/s/AKfycbx0CG5M9RX2imArAj9IRnGxxIYlEHjF5Aqdolk85nicSG05mZ1Gpol_U-oBk3-jrqlG/exec', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'createUser',
+          token: adminToken,
+          userName: newUserName,
+          userEmail: newUserEmail,
+          userRole: 'salesperson'
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.result === 'success') {
+        setNewUserName('');
+        setNewUserEmail('');
+        setShowCreateUser(false);
+        
+        // Refresh users list
+        const usersResponse = await fetch(`https://script.google.com/macros/s/AKfycbx0CG5M9RX2imArAj9IRnGxxIYlEHjF5Aqdolk85nicSG05mZ1Gpol_U-oBk3-jrqlG/exec?action=getUsers&token=${encodeURIComponent(adminToken)}`);
+        const usersData = await usersResponse.json();
+        if (usersData.ok) {
+          setUsers(usersData.users || []);
+        }
+      } else {
+        setAdminError('Error creating user');
+      }
+      
+      setAdminLoading(false);
+    } catch (error) {
+      console.error('Create user error:', error);
+      setAdminError('Network error creating user');
       setAdminLoading(false);
     }
   };
@@ -4442,10 +4556,19 @@ const StorflexAssistant = () => {
   const handleAdminLogout = () => {
     setAdminAuthenticated(false);
     setAdminToken('');
+    setSecondToken('');
+    setSelectedUser('');
+    setIsMasterAdmin(false);
     setAdminLeads([]);
+    setUsers([]);
     setAdminSearchTerm('');
     setExpandedLeadIndex(null);
     setAdminError('');
+    setFilterStatus('');
+    setFilterAssignedTo('');
+    setCurrentView('all');
+    setShowUserSelect(false);
+    setShowSecondTokenPrompt(false);
   };
   
   const handleAdminClose = () => {
@@ -4455,13 +4578,22 @@ const StorflexAssistant = () => {
   };
   
   const filteredLeads = adminLeads.filter(lead => {
-    if (!adminSearchTerm) return true;
-    const term = adminSearchTerm.toLowerCase();
-    return (
-      (lead.Name || '').toLowerCase().includes(term) ||
-      (lead.Email || '').toLowerCase().includes(term) ||
-      (lead.Company || '').toLowerCase().includes(term)
-    );
+    // Apply view filter
+    if (currentView === 'my-leads' && selectedUser) {
+      if (lead['Assigned To'] !== selectedUser) return false;
+    }
+    
+    // Apply search filter
+    if (adminSearchTerm) {
+      const term = adminSearchTerm.toLowerCase();
+      return (
+        (lead.Name || '').toLowerCase().includes(term) ||
+        (lead.Email || '').toLowerCase().includes(term) ||
+        (lead.Company || '').toLowerCase().includes(term)
+      );
+    }
+    
+    return true;
   });
   
   const getPriorityColor = (priority) => {
@@ -4852,162 +4984,326 @@ const StorflexAssistant = () => {
       {/* Admin Dashboard Modal */}
       {showAdminModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
-            {/* Admin Modal Header */}
-            <div className="bg-gradient-to-r from-blue-700 to-blue-600 text-white p-4 rounded-t-lg flex items-center justify-between">
-              <h2 className="text-lg font-bold">Admin Dashboard</h2>
+    <div className="bg-white rounded-lg shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-blue-700 to-blue-600 text-white p-4 rounded-t-lg flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <h2 className="text-lg font-bold">
+            {isMasterAdmin ? 'Master Admin Dashboard' : 'Sales Dashboard'}
+          </h2>
+          {selectedUser && <span className="text-sm opacity-90">| {selectedUser}</span>}
+        </div>
+        <button
+          onClick={handleAdminClose}
+          className="p-1 hover:bg-white hover:bg-opacity-20 rounded transition-colors"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      
+      {/* Body */}
+      <div className="flex-1 overflow-auto p-4">
+        {!adminAuthenticated ? (
+          <div className="max-w-md mx-auto mt-8">
+            {!showUserSelect && !showSecondTokenPrompt ? (
+              /* Initial Token Entry */
+              <div className="space-y-4">
+                <h3 className="text-xl font-bold">Admin Login</h3>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Admin Token</label>
+                  <input
+                    type="password"
+                    value={adminToken}
+                    onChange={(e) => setAdminToken(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleAdminLogin()}
+                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter admin token"
+                  />
+                </div>
+                {adminError && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded">
+                    {adminError}
+                  </div>
+                )}
+                <button
+                  onClick={handleAdminLogin}
+                  disabled={adminLoading}
+                  className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
+                >
+                  {adminLoading ? 'Authenticating...' : 'Login'}
+                </button>
+              </div>
+            ) : showUserSelect ? (
+              /* User Selection (Master Admin Only) */
+              <div className="space-y-4">
+                <h3 className="text-xl font-bold">Select User</h3>
+                <div className="space-y-2">
+                  {users.map((user, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => handleUserSelection(user.name)}
+                      className="w-full p-3 text-left border rounded-lg hover:bg-blue-50 transition-colors"
+                    >
+                      <div className="font-medium">{user.name}</div>
+                      <div className="text-sm text-gray-600">{user.email} • {user.role}</div>
+                    </button>
+                  ))}
+                </div>
+                {isMasterAdmin && (
+                  <button
+                    onClick={() => setShowCreateUser(true)}
+                    className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700"
+                  >
+                    + Create New User
+                  </button>
+                )}
+              </div>
+            ) : showSecondTokenPrompt ? (
+              /* Second Token (for non-default users) */
+              <div className="space-y-4">
+                <h3 className="text-xl font-bold">Enter Second Token for {selectedUser}</h3>
+                <input
+                  type="password"
+                  value={secondToken}
+                  onChange={(e) => setSecondToken(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleSecondTokenSubmit()}
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter second token"
+                />
+                <button
+                  onClick={handleSecondTokenSubmit}
+                  className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700"
+                >
+                  Continue
+                </button>
+                <button
+                  onClick={() => { setShowSecondTokenPrompt(false); setShowUserSelect(true); }}
+                  className="w-full bg-gray-600 text-white py-2 rounded-lg hover:bg-gray-700"
+                >
+                  Back
+                </button>
+              </div>
+            ) : null}
+            
+            {/* Create User Modal */}
+            {showCreateUser && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-10">
+                <div className="bg-white rounded-lg p-6 max-w-md w-full">
+                  <h3 className="text-xl font-bold mb-4">Create New User</h3>
+                  <div className="space-y-3">
+                    <input
+                      type="text"
+                      value={newUserName}
+                      onChange={(e) => setNewUserName(e.target.value)}
+                      className="w-full px-3 py-2 border rounded-lg"
+                      placeholder="Full Name"
+                    />
+                    <input
+                      type="email"
+                      value={newUserEmail}
+                      onChange={(e) => setNewUserEmail(e.target.value)}
+                      className="w-full px-3 py-2 border rounded-lg"
+                      placeholder="Email"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleCreateUser}
+                        className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700"
+                      >
+                        Create
+                      </button>
+                      <button
+                        onClick={() => setShowCreateUser(false)}
+                        className="flex-1 bg-gray-600 text-white py-2 rounded-lg hover:bg-gray-700"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          /* Main Dashboard */
+          <div className="space-y-4">
+            {/* View Tabs */}
+            <div className="flex gap-2 border-b">
               <button
-                onClick={handleAdminClose}
-                className="p-1 hover:bg-white hover:bg-opacity-20 rounded transition-colors"
-                aria-label="Close admin"
+                onClick={() => setCurrentView('all')}
+                className={`px-4 py-2 font-medium ${currentView === 'all' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600'}`}
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                All Leads
+              </button>
+              <button
+                onClick={() => setCurrentView('my-leads')}
+                className={`px-4 py-2 font-medium ${currentView === 'my-leads' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600'}`}
+              >
+                My Leads
               </button>
             </div>
             
-            {/* Admin Modal Body */}
-            <div className="flex-1 overflow-auto p-4">
-              {!adminAuthenticated ? (
-                <div className="max-w-md mx-auto mt-8">
-                  <h3 className="text-xl font-bold mb-4">Admin Login</h3>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Admin Token</label>
-                      <input
-                        type="password"
-                        value={adminToken}
-                        onChange={(e) => setAdminToken(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && handleAdminLogin()}
-                        className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Enter admin token"
-                      />
-                    </div>
-                    {adminError && (
-                      <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded">
-                        {adminError}
+            {/* Controls */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+              <input
+                type="text"
+                value={adminSearchTerm}
+                onChange={(e) => setAdminSearchTerm(e.target.value)}
+                className="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Search..."
+              />
+              <select
+                value={filterStatus}
+                onChange={(e) => { setFilterStatus(e.target.value); fetchLeads(); }}
+                className="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">All Status</option>
+                <option value="New">New</option>
+                <option value="Contacted">Contacted</option>
+                <option value="Qualified">Qualified</option>
+                <option value="Won">Won</option>
+                <option value="Lost">Lost</option>
+              </select>
+              <button
+                onClick={handleAdminRefresh}
+                disabled={adminLoading}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
+              >
+                {adminLoading ? 'Loading...' : 'Refresh'}
+              </button>
+              <button
+                onClick={handleAdminLogout}
+                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+              >
+                Logout
+              </button>
+            </div>
+            
+            {adminError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded">
+                {adminError}
+              </div>
+            )}
+            
+            {/* Leads List */}
+            <div className="space-y-2">
+              <p className="text-sm text-gray-600">
+                Showing {filteredLeads.length} of {adminLeads.length} leads
+              </p>
+              {filteredLeads.map((lead, index) => (
+                <div key={index} className="border rounded-lg overflow-hidden">
+                  <div
+                    onClick={() => setExpandedLeadIndex(expandedLeadIndex === index ? null : index)}
+                    className="p-3 cursor-pointer hover:bg-gray-50"
+                    style={{ borderLeft: `4px solid ${getPriorityColor(lead.Priority)}` }}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold">{lead.Name || 'N/A'}</span>
+                          <span className="text-xs bg-gray-100 px-2 py-0.5 rounded">
+                            Score: {lead['Confidence Score'] || 0}
+                          </span>
+                          <span className="text-xs px-2 py-0.5 rounded" style={{
+                            backgroundColor: getPriorityColor(lead.Priority),
+                            color: lead.Priority && lead.Priority.includes('LOW') ? '#fff' : '#000'
+                          }}>
+                            {lead.Priority || 'N/A'}
+                          </span>
+                          <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                            {lead.Status || 'New'}
+                          </span>
+                        </div>
+                        <div className="text-sm text-gray-600 mt-1">
+                          <div>{lead.Company || 'N/A'}</div>
+                          <div>{lead.Email || 'N/A'} • {lead.Phone || 'N/A'}</div>
+                          {lead['Assigned To'] && (
+                            <div className="text-xs">Assigned: {lead['Assigned To']}</div>
+                          )}
+                        </div>
                       </div>
-                    )}
-                    <button
-                      onClick={handleAdminLogin}
-                      disabled={adminLoading}
-                      className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 transition-colors"
-                    >
-                      {adminLoading ? 'Authenticating...' : 'Login'}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {/* Admin Controls */}
-                  <div className="flex gap-2 items-center">
-                    <input
-                      type="text"
-                      value={adminSearchTerm}
-                      onChange={(e) => setAdminSearchTerm(e.target.value)}
-                      className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Search by name, email, or company..."
-                    />
-                    <button
-                      onClick={handleAdminRefresh}
-                      disabled={adminLoading}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 transition-colors"
-                    >
-                      {adminLoading ? 'Loading...' : 'Refresh'}
-                    </button>
-                    <button
-                      onClick={handleAdminLogout}
-                      className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-                    >
-                      Logout
-                    </button>
+                      <svg
+                        className={`w-5 h-5 transition-transform ${expandedLeadIndex === index ? 'rotate-180' : ''}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
                   </div>
                   
-                  {adminError && (
-                    <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded">
-                      {adminError}
+                  {expandedLeadIndex === index && (
+                    <div className="p-3 bg-gray-50 border-t space-y-3">
+                      {/* Quick Actions */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <select
+                          value={lead.Status || 'New'}
+                          onChange={(e) => handleUpdateLead(lead._rowIndex, { status: e.target.value, lastContacted: true })}
+                          className="px-2 py-1 text-sm border rounded"
+                        >
+                          <option value="New">New</option>
+                          <option value="Contacted">Contacted</option>
+                          <option value="Qualified">Qualified</option>
+                          <option value="Won">Won</option>
+                          <option value="Lost">Lost</option>
+                        </select>
+                        <select
+                          value={lead['Assigned To'] || ''}
+                          onChange={(e) => handleUpdateLead(lead._rowIndex, { assignedTo: e.target.value })}
+                          className="px-2 py-1 text-sm border rounded"
+                        >
+                          <option value="">Unassigned</option>
+                          {users.map((user, idx) => (
+                            <option key={idx} value={user.name}>{user.name}</option>
+                          ))}
+                        </select>
+                        <input
+                          type="date"
+                          value={lead['Next Follow-up'] || ''}
+                          onChange={(e) => handleUpdateLead(lead._rowIndex, { nextFollowUp: e.target.value })}
+                          className="px-2 py-1 text-sm border rounded"
+                          placeholder="Next Follow-up"
+                        />
+                        <div className="text-xs text-gray-600 flex items-center">
+                          Last: {lead['Last Contacted'] || 'Never'}
+                        </div>
+                      </div>
+                      
+                      {/* Lead Details */}
+                      <div className="text-sm space-y-1">
+                        <div><strong>Category:</strong> {lead['Lead Category'] || 'N/A'}</div>
+                        <div><strong>Business:</strong> {lead['Business Type'] || 'N/A'}</div>
+                        <div><strong>Location:</strong> {lead.Location || 'N/A'}</div>
+                        <div><strong>Timeline:</strong> {lead.Timeline || 'N/A'}</div>
+                        <div><strong>Sections:</strong> {lead['Calculated Sections'] || 'N/A'}</div>
+                        {lead['Space Reasoning'] && lead['Space Reasoning'] !== 'N/A' && (
+                          <div><strong>Space:</strong> {lead['Space Reasoning']}</div>
+                        )}
+                        {lead.Notes && lead.Notes !== 'None' && (
+                          <div><strong>Notes:</strong> {lead.Notes}</div>
+                        )}
+                        <div><strong>Confidence:</strong> {lead['Confidence Factors'] || 'N/A'}</div>
+                      </div>
                     </div>
                   )}
-                  
-                  {/* Leads List */}
-                  <div className="space-y-2">
-                    <p className="text-sm text-gray-600">
-                      Showing {filteredLeads.length} of {adminLeads.length} leads
-                    </p>
-                    {filteredLeads.map((lead, index) => (
-                      <div
-                        key={index}
-                        className="border rounded-lg overflow-hidden"
-                      >
-                        <div
-                          onClick={() => setExpandedLeadIndex(expandedLeadIndex === index ? null : index)}
-                          className="p-3 cursor-pointer hover:bg-gray-50 transition-colors"
-                          style={{ borderLeft: `4px solid ${getPriorityColor(lead.Priority)}` }}
-                        >
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2">
-                                <span className="font-bold">{lead.Name || 'N/A'}</span>
-                                <span className="text-xs bg-gray-100 px-2 py-0.5 rounded">
-                                  Score: {lead['Confidence Score'] || 0}
-                                </span>
-                                <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: getPriorityColor(lead.Priority), color: lead.Priority && lead.Priority.includes('LOW') ? '#fff' : '#000' }}>
-                                  {lead.Priority || 'N/A'}
-                                </span>
-                              </div>
-                              <div className="text-sm text-gray-600 mt-1">
-                                <div>{lead.Company || 'N/A'}</div>
-                                <div>{lead.Email || 'N/A'} • {lead.Phone || 'N/A'}</div>
-                                <div className="text-xs">{lead.Timestamp || 'N/A'}</div>
-                              </div>
-                            </div>
-                            <svg
-                              className={`w-5 h-5 transition-transform ${expandedLeadIndex === index ? 'rotate-180' : ''}`}
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </div>
-                        </div>
-                        
-                        {expandedLeadIndex === index && (
-                          <div className="p-3 bg-gray-50 border-t text-sm space-y-2">
-                            <div><strong>Category:</strong> {lead['Lead Category'] || 'N/A'}</div>
-                            <div><strong>Business Type:</strong> {lead['Business Type'] || 'N/A'}</div>
-                            <div><strong>Location:</strong> {lead.Location || 'N/A'}</div>
-                            <div><strong>Timeline:</strong> {lead.Timeline || 'N/A'}</div>
-                            <div><strong>Calculated Sections:</strong> {lead['Calculated Sections'] || 'N/A'}</div>
-                            {lead['Space Reasoning'] && lead['Space Reasoning'] !== 'N/A' && (
-                              <div><strong>Space Reasoning:</strong> {lead['Space Reasoning']}</div>
-                            )}
-                            {lead.Notes && lead.Notes !== 'None' && (
-                              <div><strong>Notes:</strong> {lead.Notes}</div>
-                            )}
-                            <div><strong>Confidence Factors:</strong> {lead['Confidence Factors'] || 'N/A'}</div>
-                            <div><strong>Uncertainty Count:</strong> {lead['Uncertainty Count'] || 0}</div>
-                            {lead['Skipped Questions'] && lead['Skipped Questions'] !== 'None' && (
-                              <div><strong>Skipped:</strong> {lead['Skipped Questions']}</div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                    
-                    {filteredLeads.length === 0 && (
-                      <div className="text-center py-8 text-gray-500">
-                        {adminSearchTerm ? 'No leads match your search' : 'No leads found'}
-                      </div>
-                    )}
-                  </div>
+                </div>
+              ))}
+              
+              {filteredLeads.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  {adminSearchTerm || filterStatus ? 'No leads match your filters' : 'No leads found'}
                 </div>
               )}
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
+    </div>
+  </div>
+)}
           </div>
         </>
       )}
