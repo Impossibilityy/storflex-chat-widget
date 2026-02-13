@@ -226,6 +226,16 @@ const StorflexAssistant = () => {
   
   const [inputValue, setInputValue] = useState('');
   const [showLeadForm, setShowLeadForm] = useState(false);
+  
+  // Admin dashboard state
+  const [showAdminModal, setShowAdminModal] = useState(false);
+  const [adminAuthenticated, setAdminAuthenticated] = useState(false);
+  const [adminToken, setAdminToken] = useState('');
+  const [adminLeads, setAdminLeads] = useState([]);
+  const [adminLoading, setAdminLoading] = useState(false);
+  const [adminError, setAdminError] = useState('');
+  const [adminSearchTerm, setAdminSearchTerm] = useState('');
+  const [expandedLeadIndex, setExpandedLeadIndex] = useState(null);
   const [leadFormData, setLeadFormData] = useState({
     name: '',
     company: '',
@@ -3994,7 +4004,7 @@ const StorflexAssistant = () => {
 
     try {
       // Send to Google Sheets via Google Apps Script Web App
-      const response = await fetch('https://script.google.com/macros/s/AKfycbxDlLRpGEq6UuNfGUQRJTWyjTt4BoyyRjjerN1eG_vdvCghLoTdrAaqfzjvRIC4zw3x/exec', {
+      const response = await fetch('https://script.google.com/macros/s/AKfycbyV3ku6oBNXWB-shA1x7rhRtKX3VG_YMM1ytkQ5_rtGRO69E4D7zx2fn4B2hpoif8Oz/exec', {
         method: 'POST',
         headers: {
           'Content-Type': 'text/plain',
@@ -4346,6 +4356,92 @@ const StorflexAssistant = () => {
     processOptionSelectionWithState(optionId, conversationState);
   };
 
+  // ===== ADMIN DASHBOARD FUNCTIONS =====
+  
+  const handleAdminLogin = async () => {
+    if (!adminToken.trim()) {
+      setAdminError('Please enter admin token');
+      return;
+    }
+    
+    setAdminLoading(true);
+    setAdminError('');
+    
+    try {
+      const response = await fetch(`https://script.google.com/macros/s/AKfycbyV3ku6oBNXWB-shA1x7rhRtKX3VG_YMM1ytkQ5_rtGRO69E4D7zx2fn4B2hpoif8Oz/exec?token=${encodeURIComponent(adminToken)}&limit=50`);
+      const data = await response.json();
+      
+      if (!data.ok) {
+        setAdminError(data.error === 'unauthorized' ? 'Invalid admin token' : 'Error loading leads');
+        setAdminLoading(false);
+        return;
+      }
+      
+      setAdminLeads(data.leads || []);
+      setAdminAuthenticated(true);
+      setAdminLoading(false);
+    } catch (error) {
+      setAdminError('Network error - check script URL');
+      setAdminLoading(false);
+    }
+  };
+  
+  const handleAdminRefresh = async () => {
+    if (!adminAuthenticated) return;
+    
+    setAdminLoading(true);
+    setAdminError('');
+    
+    try {
+      const response = await fetch(`https://script.google.com/macros/s/AKfycbyV3ku6oBNXWB-shA1x7rhRtKX3VG_YMM1ytkQ5_rtGRO69E4D7zx2fn4B2hpoif8Oz/exec?token=${encodeURIComponent(adminToken)}&limit=50`);
+      const data = await response.json();
+      
+      if (!data.ok) {
+        setAdminError('Session expired - please login again');
+        setAdminAuthenticated(false);
+        setAdminLoading(false);
+        return;
+      }
+      
+      setAdminLeads(data.leads || []);
+      setAdminLoading(false);
+    } catch (error) {
+      setAdminError('Network error');
+      setAdminLoading(false);
+    }
+  };
+  
+  const handleAdminLogout = () => {
+    setAdminAuthenticated(false);
+    setAdminToken('');
+    setAdminLeads([]);
+    setAdminSearchTerm('');
+    setExpandedLeadIndex(null);
+    setAdminError('');
+  };
+  
+  const handleAdminClose = () => {
+    setShowAdminModal(false);
+    setAdminSearchTerm('');
+    setExpandedLeadIndex(null);
+  };
+  
+  const filteredLeads = adminLeads.filter(lead => {
+    if (!adminSearchTerm) return true;
+    const term = adminSearchTerm.toLowerCase();
+    return (
+      (lead.Name || '').toLowerCase().includes(term) ||
+      (lead.Email || '').toLowerCase().includes(term) ||
+      (lead.Company || '').toLowerCase().includes(term)
+    );
+  });
+  
+  const getPriorityColor = (priority) => {
+    if (priority && priority.includes('HIGH')) return '#00ff00';
+    if (priority && priority.includes('MEDIUM')) return '#ffff00';
+    return '#4169e1';
+  };
+
   const handleTextSubmit = (e) => {
     e.preventDefault();
     if (inputValue.trim()) {
@@ -4411,15 +4507,24 @@ const StorflexAssistant = () => {
                   <p className="text-xs text-blue-100">Product Specialist</p>
                 </div>
               </div>
-              <button
-                onClick={() => setIsWidgetOpen(false)}
-                className="p-2 hover:bg-white hover:bg-opacity-20 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-white"
-                aria-label="Close chat"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowAdminModal(true)}
+                  className="px-2 py-1 text-xs bg-white bg-opacity-10 hover:bg-opacity-20 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-white"
+                  aria-label="Admin"
+                >
+                  Admin
+                </button>
+                <button
+                  onClick={() => setIsWidgetOpen(false)}
+                  className="p-2 hover:bg-white hover:bg-opacity-20 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-white"
+                  aria-label="Close chat"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
           
@@ -4712,6 +4817,166 @@ const StorflexAssistant = () => {
             <p className="text-[10px] sm:text-xs text-gray-400 text-center mt-2.5">
               Storflex Holdings Inc. • Corning, NY
             </p>
+          </div>
+        </div>
+      )}
+      
+      {/* Admin Dashboard Modal */}
+      {showAdminModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+            {/* Admin Modal Header */}
+            <div className="bg-gradient-to-r from-blue-700 to-blue-600 text-white p-4 rounded-t-lg flex items-center justify-between">
+              <h2 className="text-lg font-bold">Admin Dashboard</h2>
+              <button
+                onClick={handleAdminClose}
+                className="p-1 hover:bg-white hover:bg-opacity-20 rounded transition-colors"
+                aria-label="Close admin"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            {/* Admin Modal Body */}
+            <div className="flex-1 overflow-auto p-4">
+              {!adminAuthenticated ? (
+                <div className="max-w-md mx-auto mt-8">
+                  <h3 className="text-xl font-bold mb-4">Admin Login</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Admin Token</label>
+                      <input
+                        type="password"
+                        value={adminToken}
+                        onChange={(e) => setAdminToken(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && handleAdminLogin()}
+                        className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Enter admin token"
+                      />
+                    </div>
+                    {adminError && (
+                      <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded">
+                        {adminError}
+                      </div>
+                    )}
+                    <button
+                      onClick={handleAdminLogin}
+                      disabled={adminLoading}
+                      className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 transition-colors"
+                    >
+                      {adminLoading ? 'Authenticating...' : 'Login'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Admin Controls */}
+                  <div className="flex gap-2 items-center">
+                    <input
+                      type="text"
+                      value={adminSearchTerm}
+                      onChange={(e) => setAdminSearchTerm(e.target.value)}
+                      className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Search by name, email, or company..."
+                    />
+                    <button
+                      onClick={handleAdminRefresh}
+                      disabled={adminLoading}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 transition-colors"
+                    >
+                      {adminLoading ? 'Loading...' : 'Refresh'}
+                    </button>
+                    <button
+                      onClick={handleAdminLogout}
+                      className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                  
+                  {adminError && (
+                    <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded">
+                      {adminError}
+                    </div>
+                  )}
+                  
+                  {/* Leads List */}
+                  <div className="space-y-2">
+                    <p className="text-sm text-gray-600">
+                      Showing {filteredLeads.length} of {adminLeads.length} leads
+                    </p>
+                    {filteredLeads.map((lead, index) => (
+                      <div
+                        key={index}
+                        className="border rounded-lg overflow-hidden"
+                      >
+                        <div
+                          onClick={() => setExpandedLeadIndex(expandedLeadIndex === index ? null : index)}
+                          className="p-3 cursor-pointer hover:bg-gray-50 transition-colors"
+                          style={{ borderLeft: `4px solid ${getPriorityColor(lead.Priority)}` }}
+                        >
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold">{lead.Name || 'N/A'}</span>
+                                <span className="text-xs bg-gray-100 px-2 py-0.5 rounded">
+                                  Score: {lead['Confidence Score'] || 0}
+                                </span>
+                                <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: getPriorityColor(lead.Priority), color: lead.Priority && lead.Priority.includes('LOW') ? '#fff' : '#000' }}>
+                                  {lead.Priority || 'N/A'}
+                                </span>
+                              </div>
+                              <div className="text-sm text-gray-600 mt-1">
+                                <div>{lead.Company || 'N/A'}</div>
+                                <div>{lead.Email || 'N/A'} • {lead.Phone || 'N/A'}</div>
+                                <div className="text-xs">{lead.Timestamp || 'N/A'}</div>
+                              </div>
+                            </div>
+                            <svg
+                              className={`w-5 h-5 transition-transform ${expandedLeadIndex === index ? 'rotate-180' : ''}`}
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
+                        </div>
+                        
+                        {expandedLeadIndex === index && (
+                          <div className="p-3 bg-gray-50 border-t text-sm space-y-2">
+                            <div><strong>Category:</strong> {lead['Lead Category'] || 'N/A'}</div>
+                            <div><strong>Business Type:</strong> {lead['Business Type'] || 'N/A'}</div>
+                            <div><strong>Location:</strong> {lead.Location || 'N/A'}</div>
+                            <div><strong>Timeline:</strong> {lead.Timeline || 'N/A'}</div>
+                            <div><strong>Calculated Sections:</strong> {lead['Calculated Sections'] || 'N/A'}</div>
+                            {lead['Space Reasoning'] && lead['Space Reasoning'] !== 'N/A' && (
+                              <div><strong>Space Reasoning:</strong> {lead['Space Reasoning']}</div>
+                            )}
+                            {lead.Notes && lead.Notes !== 'None' && (
+                              <div><strong>Notes:</strong> {lead.Notes}</div>
+                            )}
+                            <div><strong>Confidence Factors:</strong> {lead['Confidence Factors'] || 'N/A'}</div>
+                            <div><strong>Uncertainty Count:</strong> {lead['Uncertainty Count'] || 0}</div>
+                            {lead['Skipped Questions'] && lead['Skipped Questions'] !== 'None' && (
+                              <div><strong>Skipped:</strong> {lead['Skipped Questions']}</div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    
+                    {filteredLeads.length === 0 && (
+                      <div className="text-center py-8 text-gray-500">
+                        {adminSearchTerm ? 'No leads match your search' : 'No leads found'}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
