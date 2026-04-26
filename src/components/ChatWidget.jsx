@@ -497,7 +497,7 @@ const StorflexAssistant = () => {
       if (locationId === 'cooler' || locationId === 'freezer' || locationId === 'both_cf') {
         setConversationState(prev => ({ 
           ...prev, 
-          skippedQuestions: [...prev.skippedQuestions, 'items', 'displayType', 'adjustability', 'spaceInfo']
+          skippedQuestions: [...(prev.skippedQuestions || []), 'items', 'displayType', 'adjustability', 'spaceInfo']
         }));
         skipToTimeline();
         return;
@@ -532,7 +532,7 @@ const StorflexAssistant = () => {
         // Note: Wall-only doesn't need aisle width questions
         setConversationState(prev => ({ 
           ...prev, 
-          skippedQuestions: [...prev.skippedQuestions, 'aisleWidth']
+          skippedQuestions: [...(prev.skippedQuestions || []), 'aisleWidth']
         }));
         return;
       }
@@ -744,7 +744,7 @@ const StorflexAssistant = () => {
         ]);
         setConversationState(prev => ({ 
           ...prev, 
-          skippedQuestions: [...prev.skippedQuestions, 'adjustability']
+          skippedQuestions: [...(prev.skippedQuestions || []), 'adjustability']
         }));
         return;
       }
@@ -769,7 +769,7 @@ const StorflexAssistant = () => {
         ]);
         setConversationState(prev => ({ 
           ...prev, 
-          skippedQuestions: [...prev.skippedQuestions, 'adjustability']
+          skippedQuestions: [...(prev.skippedQuestions || []), 'adjustability']
         }));
         return;
       }
@@ -791,7 +791,7 @@ const StorflexAssistant = () => {
         ]);
         setConversationState(prev => ({ 
           ...prev, 
-          skippedQuestions: [...prev.skippedQuestions, 'adjustability']
+          skippedQuestions: [...(prev.skippedQuestions || []), 'adjustability']
         }));
         return;
       }
@@ -816,7 +816,7 @@ const StorflexAssistant = () => {
         ]);
         setConversationState(prev => ({ 
           ...prev, 
-          skippedQuestions: [...prev.skippedQuestions, 'adjustability']
+          skippedQuestions: [...(prev.skippedQuestions || []), 'adjustability']
         }));
         return;
       }
@@ -4004,7 +4004,7 @@ const StorflexAssistant = () => {
       priority: confidence.priority,
       confidenceFactors: confidence.factors.join('; '),
       uncertaintyCount: conversationState.uncertaintyCount || 0,
-      skippedQuestions: conversationState.skippedQuestions.join(', ') || 'None'
+      skippedQuestions: (conversationState.skippedQuestions || []).join(', ') || 'None'
     };
 
     try {
@@ -4074,7 +4074,10 @@ const StorflexAssistant = () => {
           sectionCount: null,
           timeline: null,
           supportType: null,
-          leadData: {}
+          leadData: {},
+          uncertaintyCount: 0,
+          skippedQuestions: [],
+          confidenceFactors: {}
         };
       } else if (message.text?.includes("What type of business")) {
         // Business type question - keep mode/intent, reset everything else
