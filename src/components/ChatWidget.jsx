@@ -4219,7 +4219,7 @@ const StorflexAssistant = () => {
         return;
       }
       
-      if (optionId.includes('_end') || optionId.includes('_corner') || optionId.includes('_checkout')) {
+      if (optionId.includes('_end') || optionId.includes('_corner') || optionId.includes('_checkout') || optionId === 'promotional' || optionId === 'impulse_displays') {
         handleDisplayType(optionId);
         return;
       }
