@@ -3951,6 +3951,21 @@ const StorflexAssistant = () => {
     return { score, category, priority, factors };
   };
 
+
+  const handleTextSubmit = (e) => {
+    e.preventDefault();
+
+    const text = inputValue.trim();
+    if (!text) return;
+
+    addMessage('user', text);
+    setInputValue('');
+
+    setTimeout(() => {
+      analyzeCustomRequest(text);
+    }, 300);
+  };
+
   const handleLeadSubmit = async (e) => {
     e.preventDefault();
     
