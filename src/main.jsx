@@ -1,10 +1,10 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import StorflexAssistant from './components/ChatWidget.jsx'
-import './index.css'
+import React from "react";
+import ReactDOM from "react-dom/client";
+import ChatWidget from "./components/ChatWidget.jsx";
+import "./index.css";
 
-ReactDOM.createRoot(document.getElementById('root')).render(
+ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <StorflexAssistant />
+    <ChatWidget />
   </React.StrictMode>
-)
+);
